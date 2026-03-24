@@ -1,5 +1,7 @@
 import React from 'react'
 import Image from 'next/image'
+import { ShieldCheck, Users } from 'lucide-react'
+import MainButton from '@/components/ui/mainbtn'
 
 const Hero = () => {
   return (
@@ -7,20 +9,72 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         <Image
-          src="/images/hero/Hero.png"
+          src="/images/hero/HeroFInal.png"
           alt="Muslim Nikah Matrimony Hero"
           fill
           priority
           className="object-cover"
-          quality={100}
+          quality={75}
         />
       </div>
-      
-      {/* Optional overlay for better text readability */}
-      {/* <div className="absolute inset-0 bg-black/20" /> */}
-      
-      {/* Hero Content */}
-     
+
+      {/* Hero Content — left side */}
+      <div className="relative z-10 flex items-center h-full">
+        <div className="containerpadding container mx-auto  w-full">
+          <div className="max-w-3xl flex flex-col gap-6">
+
+            {/* Badge */}
+            <div className="inline-flex w-fit items-center gap-2 bg-white/15 backdrop-blur-sm border text-[20px] border-white/30 text-white font-poppins text-sm font-normal px-6 py-2 rounded-full">
+            
+              Privacy-First Platform
+            </div>
+
+            {/* Heading */}
+            <h1 className="text-5xl lg:text-6xl xl:text-[75px] font-semibold text-white font-poppins leading-tight">
+              Find a Meaningful <br />
+              Match with{' '}
+              <span className="text-[#DB9D30] italic">Trust,</span>
+              <br />
+              Privacy &{' '}
+              <span className="text-[#DB9D30] italic">Faith</span>
+            </h1>
+
+            {/* Description */}
+            <p className="text-white/80 text-base lg:text-[20px] font-poppins leading-relaxed max-w-2xl ">
+              Built on trust, privacy, and values, our system helps families
+              connect with the right matches through a refined and secure
+              digital experience.
+            </p>
+
+            {/* Buttons */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <MainButton px="px-8" py="py-3" className="text-base font-medium font-poppins">
+                Create Profile
+              </MainButton>
+              <button className="text-[#DB9D30] border font-semibold px-8 py-3 rounded-full text-base bg-white font-poppins hover:bg-[#FFFFFF]/80 transition-all duration-200">
+                Match Now
+              </button>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-5 pt-2 max-w-xl">
+              <div className="flex items-center gap-2 text-white text-sm lg:text-[20px] font-medium font-poppins ">
+                <ShieldCheck className="w-5 h-5 lg:w-6 lg:h-6 text-[#DB9D30]" />
+                Privacy-First
+              </div>
+              <div className="flex items-center gap-2 text-white text-sm lg:text-[20px]  font-medium font-poppins ">
+                <ShieldCheck className="w-5 h-5 lg:w-6 lg:h-6 text-[#DB9D30]" />
+                Verified Profiles
+              </div>
+              <div className="flex items-center gap-2 text-white text-sm lg:text-[20px]  font-medium font-poppins ">
+                <Users className="w-5 h-5 lg:w-6 lg:h-6 text-[#DB9D30]" />
+                Parent-Managed
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

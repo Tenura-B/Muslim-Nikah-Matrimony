@@ -142,7 +142,7 @@
   @apply text-[15px] sm:text-[15px] md:text-[16px] lg:text-[18px] xl:text-[20px] 2xl:text-[22px];
 }
 .containerpadding {
-  @apply px-4 sm:px-6 lg:px-10 xl:px-20 2xl:px-15;
+  @apply px-4 sm:px-6 lg:px-10 xl:px-15 2xl:px-15;
 }
 .margin-y {
   @apply my-[20px] sm:my-[30px] md:my-[40px] lg:my-[50px] xl:my-[60px] 2xl:my-[70px] ;
