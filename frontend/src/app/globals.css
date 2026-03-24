@@ -117,6 +117,7 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -127,4 +128,22 @@
   html {
     @apply font-sans;
   }
+}
+.font-poppins {
+  font-family: var(--font-poppins), sans-serif;
+}
+.title {
+  @apply text-[30px] sm:text-[36px] md:text-[42px] lg:text-[52px] xl:text-[60px] 2xl:text-[64px];
+}
+.subtitle {
+  @apply text-[18px] sm:text-[18px] md:text-[20px] lg:text-[20px] xl:text-[22px] 2xl:text-[26px];
+}
+.paragraph {
+  @apply text-[15px] sm:text-[15px] md:text-[16px] lg:text-[18px] xl:text-[20px] 2xl:text-[22px];
+}
+.containerpadding {
+  @apply px-4 sm:px-6 lg:px-10 xl:px-20 2xl:px-15;
+}
+.margin-y {
+  @apply my-[20px] sm:my-[30px] md:my-[40px] lg:my-[50px] xl:my-[60px] 2xl:my-[70px] ;
 }
