@@ -194,7 +194,7 @@ const GenuineProfileCard = ({
                 </div>
 
                 {/* Profile image clipped inside the diamond shape */}
-                <div className="absolute inset-[14px] rounded-full overflow-hidden bg-gray-100">
+                <div className="absolute inset-[18px] rounded-full overflow-hidden bg-gray-100">
                     {profileImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -238,11 +238,9 @@ const GenuineProfileCard = ({
                 </p>
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-dashed border-gray-200 mb-2" />
-
+        
             {/* Info rows */}
-            <div className="divide-y divide-dashed divide-gray-100">
+            <div className=" divide-gray-100">
                 <InfoRow label="Age:" value={`${age} Years`} />
                 <InfoRow label="Height:" value={height} />
                 <InfoRow label="Marital Status:" value={maritalStatus} />
@@ -251,7 +249,7 @@ const GenuineProfileCard = ({
             </div>
 
             {/* Divider */}
-            <div className="border-t border-dashed border-gray-200 mt-2 mb-3" />
+            <div className="border-t border-dashed border-gray-700 mt-2 mb-3" />
 
             {/* Joined date */}
             <p className="text-center text-[11px] lg:text-[13px] xl:text-[15px] 2xl:text-[17px] text-[#010806A1]/80 font-poppins mb-3">
@@ -269,7 +267,7 @@ const GenuineProfileCard = ({
 // Default export renders all dummy cards (for use in a section)
 const GenuineProfileCards = () => {
     return (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4 justify-items-center">
+        <div className="grid grid-cols-2 gap-2 md:gap-6 sm:grid-cols-2 xl:grid-cols-4 justify-items-center">
             {dummyProfiles.map((profile, idx) => (
                 <GenuineProfileCard key={idx} {...profile} />
             ))}
