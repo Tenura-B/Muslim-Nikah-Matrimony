@@ -1,0 +1,51 @@
+import React from "react";
+import Image from "next/image";
+
+const AboutHeader = () => {
+  return (
+    <section className="relative w-full bg-[#085140] overflow-hidden">
+      {/* Background image */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/about/abtheader.png"
+          alt=""
+          fill
+          priority
+          className="object-cover object-center"
+        />
+        {/* dark teal overlay so text stays readable */}
+        {/* <div className="absolute inset-0 bg-[#0D3B2E]/90" /> */}
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 containerpadding container mx-auto flex min-h-[500px] sm:min-h-[600px] md:min-h-[500px] lg:min-h-[600px] flex-col items-center justify-center gap-5  text-center margin-y">
+        {/* Eyebrow */}
+        <p className="font-andada-pro title-sub-top font-light text-white ">
+          Guided by faith, grounded in privacy, and rooted in family values
+        </p>
+
+        {/* Heading */}
+        <h1 className="title font-poppins font-medium text-white leading-tight max-w-4xl">
+          Meaningful Matches,
+          <br />
+          Guided by{" "}
+          <span className="font-aref-ruqaa-ink font-bold text-[#DB9D30]">
+            Faith
+          </span>
+        </h1>
+
+        {/* Description */}
+        <p className="paragraph font-poppins text-white  max-w-4xl">
+          MuslimNikah is a trusted matrimonial platform created to support
+          families in finding meaningful and halal life partners. Built on the
+          values of faith, privacy, and respect, our system offers a secure and
+          guided experience where compatibility, family involvement, and sincere
+          intentions come together—helping you move towards a blessed and
+          lasting union.
+        </p>
+      </div>
+    </section>
+  );
+};
+
+export default AboutHeader;
