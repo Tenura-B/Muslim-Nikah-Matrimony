@@ -51,7 +51,7 @@ export default function PricingCards() {
   return (
     <section className="w-full bg-white margin-y">
       <div className="containerpadding container mx-auto">
-        <div className="flex flex-col items-stretch gap-6 sm:flex-row sm:items-start sm:justify-center">
+        <div className=" grid  grid-cols-1 gap-8 sm:grid-cols-1 lg:grid-cols-3 items-center">
           {PLANS.map((plan) => {
             const isSelected = selected === plan.id;
             return (
@@ -59,10 +59,10 @@ export default function PricingCards() {
                 key={plan.id}
                 onClick={() => setSelected(plan.id)}
                 className={[
-                  "relative flex cursor-pointer flex-col gap-5 rounded-2xl border-2 bg-white p-7 shadow-md transition-all duration-300 sm:w-[300px] xl:w-[400px]",
+                  "relative flex flex-1 cursor-pointer flex-col gap-5 rounded-2xl border-2 bg-white p-7 shadow-md transition-all duration-300",
                   isSelected
-                    ? "scale-[1.04] border-[#DB9D30] shadow-xl"
-                    : "border-transparent hover:scale-[1.02] hover:border-[#DB9D30]/50 hover:shadow-lg",
+                    ? "z-10 scale-[1.05] border-[#DB9D30] shadow-2xl"
+                    : " border-[#E5E7EB]/50 shadow-md hover:border-[#DB9D30]/40 hover:shadow-lg",
                 ].join(" ")}
               >
                 {/* Badge */}
@@ -91,7 +91,7 @@ export default function PricingCards() {
                 <hr className="border-dashed border-[#D1D5DB]" />
 
                 {/* Features */}
-                <ul className="flex flex-col gap-3">
+                <ul className="flex flex-col gap-3 h-[200px]">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-center gap-3">
                       <CheckCircle2
