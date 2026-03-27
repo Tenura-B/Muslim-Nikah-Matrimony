@@ -1,0 +1,98 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PaymentService } from '../payment/payment.service';
+import { IsString, IsOptional } from 'class-validator';
+
+export class ApprovePaymentDto {
+  @IsString()
+  paymentId: string;
+
+  @IsOptional() @IsString()
+  adminNote?: string;
+}
+
+@Injectable()
+export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+    private readonly paymentService: PaymentService,
+  ) {}
+
+  // ─── Payments ─────────────────────────────────────────────────────────────
+  async approvePayment(adminId: string, dto: ApprovePaymentDto) {
+    const payment = await this.prisma.payment.findUnique({ where: { id: dto.paymentId } });
+    if (!payment) throw new NotFoundException({ success: false, message: 'Payment not found', error_code: 'NOT_FOUND' });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'SUCCESS',
+          approvedBy: adminId,
+          approvedAt: new Date(),
+          adminNote: dto.adminNote,
+        },
+      });
+      await this.paymentService.activateSubscription(tx, payment.childProfileId);
+    });
+
+    this.events.emit('PAYMENT_SUCCESS', { paymentId: payment.id, profileId: payment.childProfileId, approvedBy: adminId });
+    this.logger.log(`Admin APPROVED payment: ${payment.id} by admin ${adminId}`);
+
+    return { success: true, message: 'Payment approved and profile activated' };
+  }
+
+  async getAllPayments(status?: string) {
+    const payments = await this.prisma.payment.findMany({
+      where: status ? { status: status as any } : undefined,
+      include: { user: { select: { id: true, email: true } }, childProfile: { select: { id: true, name: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { success: true, data: payments };
+  }
+
+  // ─── Users ────────────────────────────────────────────────────────────────
+  async getAllUsers() {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true, email: true, role: true, phone: true, createdAt: true,
+        childProfiles: { select: { id: true, name: true, status: true, subscription: { select: { status: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { success: true, data: users };
+  }
+
+  // ─── Profiles ─────────────────────────────────────────────────────────────
+  async getAllProfiles(status?: string) {
+    const profiles = await this.prisma.childProfile.findMany({
+      where: status ? { status: status as any } : undefined,
+      include: {
+        user: { select: { id: true, email: true } },
+        subscription: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { success: true, data: profiles };
+  }
+
+  // ─── Dashboard stats ──────────────────────────────────────────────────────
+  async getDashboard() {
+    const [totalUsers, totalProfiles, activeProfiles, pendingPayments, totalRevenue] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.childProfile.count(),
+      this.prisma.childProfile.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.payment.count({ where: { status: 'PENDING' } }),
+      this.prisma.payment.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }),
+    ]);
+
+    return {
+      success: true,
+      data: { totalUsers, totalProfiles, activeProfiles, pendingPayments, totalRevenue: totalRevenue._sum.amount ?? 0 },
+    };
+  }
+}
