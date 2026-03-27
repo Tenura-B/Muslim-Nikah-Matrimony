@@ -1,63 +1,88 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { packagesApi } from "@/services/api";
 
-const PLANS = [
-  {
-    id: "3months",
-    duration: "3 Months",
-    price: 99,
-    badge: null,
-    features: [
-      "Full profile access",
-      "Unlimited messaging",
-      "Privacy controls",
-      "AI-powered suggestions",
-    ],
-  },
-  {
-    id: "6months",
-    duration: "6 Months",
-    price: 199,
-    badge: "Most Popular",
-    features: [
-      "Everything in 6 months",
-      "Priority support",
-      "Advanced matching",
-      "Profile boost",
-      "Extended visibility",
-    ],
-  },
-  {
-    id: "9months",
-    duration: "9 Months",
-    price: 229,
-    badge: "Best Value",
-    features: [
-      "Everything in 9 months",
-      "Dedicated advisor",
-      "Premium placement",
-      "Exclusive events access",
-    ],
-  },
-] as const;
+type Package = {
+  id: string; name: string; description?: string; price: number;
+  currency: string; durationDays: number; features: string[];
+  isActive: boolean; sortOrder: number;
+};
 
-type PlanId = (typeof PLANS)[number]["id"];
+// Fallback static plans if the API returns nothing yet
+const FALLBACK: Package[] = [
+  {
+    id: "3months", name: "3 Months", price: 99, currency: "USD", durationDays: 90,
+    features: ["Full profile access", "Unlimited messaging", "Privacy controls", "AI-powered suggestions"],
+    isActive: true, sortOrder: 0,
+  },
+  {
+    id: "6months", name: "6 Months", price: 199, currency: "USD", durationDays: 180,
+    features: ["Everything in 3 months", "Priority support", "Advanced matching", "Profile boost", "Extended visibility"],
+    isActive: true, sortOrder: 1,
+  },
+  {
+    id: "9months", name: "9 Months", price: 229, currency: "USD", durationDays: 270,
+    features: ["Everything in 6 months", "Dedicated advisor", "Premium placement", "Exclusive events access"],
+    isActive: true, sortOrder: 2,
+  },
+];
 
 export default function PricingCards() {
-  const [selected, setSelected] = useState<PlanId>("6months");
+  const [plans, setPlans] = useState<Package[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    packagesApi.getActive()
+      .then((r) => {
+        const data: Package[] = r.data ?? [];
+        const list = data.length > 0 ? data : FALLBACK;
+        setPlans(list);
+        // auto-select middle card (most popular effect)
+        const mid = list[Math.floor(list.length / 2)];
+        setSelectedId(mid?.id ?? list[0]?.id ?? "");
+      })
+      .catch(() => {
+        setPlans(FALLBACK);
+        setSelectedId(FALLBACK[1].id);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="w-full bg-white margin-y">
+        <div className="containerpadding container mx-auto">
+          <div className="flex flex-col items-stretch gap-6 sm:flex-row sm:items-start sm:justify-center">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-2xl border-2 border-transparent bg-gray-100 animate-pulse h-80 sm:w-[300px] xl:w-[400px]" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="w-full bg-white margin-y">
       <div className="containerpadding container mx-auto">
         <div className="flex flex-col items-stretch gap-6 sm:flex-row sm:items-start sm:justify-center">
-          {PLANS.map((plan) => {
-            const isSelected = selected === plan.id;
+          {plans.map((plan, idx) => {
+            const isSelected = selectedId === plan.id;
+            // Middle card gets "Most Popular" badge, last gets "Best Value"
+            const badge =
+              idx === Math.floor(plans.length / 2) && plans.length > 1
+                ? "Most Popular"
+                : idx === plans.length - 1 && plans.length > 2
+                ? "Best Value"
+                : null;
+
             return (
               <div
                 key={plan.id}
-                onClick={() => setSelected(plan.id)}
+                onClick={() => setSelectedId(plan.id)}
                 className={[
                   "relative flex cursor-pointer flex-col gap-5 rounded-2xl border-2 bg-white p-7 shadow-md transition-all duration-300 sm:w-[300px] xl:w-[400px]",
                   isSelected
@@ -66,26 +91,33 @@ export default function PricingCards() {
                 ].join(" ")}
               >
                 {/* Badge */}
-                {plan.badge && (
+                {badge && (
                   <span className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#DB9D30] px-4 py-1 text-[13px] font-semibold text-white font-poppins shadow">
-                    {plan.badge}
+                    {badge}
                   </span>
                 )}
 
-                {/* Duration */}
+                {/* Name / Duration */}
                 <h3 className="font-poppins subtitle font-medium text-[#010806]">
-                  {plan.duration}
+                  {plan.name}
                 </h3>
 
                 {/* Price */}
                 <div className="flex items-baseline gap-1">
                   <span className="font-poppins text-[28px] sm:text-[34px] md:text-[40px] lg:text-[50px] xl:text-[60px] font-semibold text-[#397466]">
-                    $ {plan.price}
+                    ${plan.price}
                   </span>
-                  <span className="font-poppins text-[15px] sm:text-[16px] md:text-[17px] lg:text-[18px] xl:text-[18px]  text-[#6B7280]">
-                    one-time
+                  <span className="font-poppins text-[15px] sm:text-[16px] md:text-[17px] lg:text-[18px] xl:text-[18px] text-[#6B7280]">
+                    {plan.durationDays} days
                   </span>
                 </div>
+
+                {/* Description */}
+                {plan.description && (
+                  <p className="font-poppins text-[14px] text-[#6B7280] -mt-3">
+                    {plan.description}
+                  </p>
+                )}
 
                 {/* Divider */}
                 <hr className="border-dashed border-[#D1D5DB]" />
@@ -100,7 +132,7 @@ export default function PricingCards() {
                           isSelected ? "text-[#DB9D30]" : "text-[#397466]",
                         ].join(" ")}
                       />
-                      <span className="font-poppins text-[15px] sm:text-[16px] md:text-[17px] lg:text-[18px] xl:text-[18px]  text-[#878787]">
+                      <span className="font-poppins text-[15px] sm:text-[16px] md:text-[17px] lg:text-[18px] xl:text-[18px] text-[#878787]">
                         {f}
                       </span>
                     </li>

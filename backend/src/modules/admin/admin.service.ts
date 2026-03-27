@@ -95,6 +95,14 @@ export class AdminService {
   }
 
   // ─── Packages ─────────────────────────────────────────────────────────────
+  async getActivePackages() {
+    const packages = await this.prisma.package.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+    return { success: true, data: packages };
+  }
+
   async getPackages() {
     const packages = await this.prisma.package.findMany({
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],

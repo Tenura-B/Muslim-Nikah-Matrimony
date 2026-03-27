@@ -113,3 +113,7 @@ export const adminApi = {
   deletePackage: (id: string) => request<any>(`/admin/packages/${id}`, { method: 'DELETE' }),
 };
 
+// ─── Public Packages (no auth) ────────────────────────────────────────────
+export const packagesApi = {
+  getActive: () => request<any>('/packages'),
+};

@@ -4,6 +4,17 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
+/** Public endpoint — no auth required */
+@Controller('packages')
+export class PublicPackagesController {
+  constructor(private readonly service: AdminService) {}
+
+  @Get()
+  getActivePackages() {
+    return this.service.getActivePackages();
+  }
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('ADMIN')
 @Controller('admin')
