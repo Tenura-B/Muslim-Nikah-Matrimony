@@ -34,13 +34,13 @@ const Nav = () => {
      'text-[#DB9D30]  hover:text-[#DB9D30]/80'
 
   return (
-    <div className="fixed top-5 left-0 right-0 z-500 isolate flex touch-manipulation justify-center containerpadding container mx-auto">
+    <div className="fixed top-3 sm:top-5 left-0 right-0 z-[500] isolate flex touch-manipulation justify-center px-3 sm:px-5 lg:px-8">
       <div className="w-full flex flex-col gap-2">
         <nav className="w-full backdrop-blur-md bg-[#4B7F73]/50 border border-white/15 rounded-full shadow-2xl shadow-black/30">
           <div className="px-4 sm:px-6 lg:px-10">
             <div className="flex items-center justify-between h-16">
               <Link href="/" className="flex items-center shrink-0">
-                <span className="text-white font-poppins text-[18px] sm:text-[20px] font-medium uppercase">
+                <span className="text-white font-poppins text-[15px] sm:text-[18px] font-semibold uppercase tracking-wide">
                   Muslim Nikah
                 </span>
               </Link>
@@ -86,7 +86,7 @@ const Nav = () => {
 
               <button
                 type="button"
-                className="md:hidden inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-2 text-white [-webkit-tap-highlight-color:transparent] touch-manipulation hover:bg-white/10 transition-colors"
+                className="md:hidden inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-full p-2 text-white [-webkit-tap-highlight-color:transparent] touch-manipulation hover:bg-white/10 active:bg-white/20 transition-colors"
                 aria-expanded={menuOpen}
                 aria-controls="mobile-nav"
                 aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -123,19 +123,19 @@ const Nav = () => {
         {menuOpen ? (
           <div
             id="mobile-nav"
-            className="md:hidden touch-manipulation rounded-2xl border border-white/15 bg-[#4B7F73]/90 backdrop-blur-md shadow-xl shadow-black/20 px-4 py-4"
+            className="md:hidden touch-manipulation rounded-2xl border border-white/15 bg-[#2d5c4f]/95 backdrop-blur-md shadow-2xl shadow-black/30 overflow-hidden"
           >
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col">
               {navItems.map((item) => {
                 const active = isActive(item.href)
                 return (
-                  <li key={item.name}>
+                  <li key={item.name} className="border-b border-white/10 last:border-0">
                     <Link
                       href={item.href}
-                      className={`block w-full text-left px-3 py-2.5 ${linkBase} ${
+                      className={`flex items-center w-full px-5 py-3.5 ${linkBase} ${
                         active ? linkActiveMobile : linkInactive
                       }`}
-                      style={{ fontSize: '18px' }}
+                      style={{ fontSize: '16px' }}
                     >
                       {item.name}
                     </Link>
@@ -143,18 +143,16 @@ const Nav = () => {
                 )
               })}
             </ul>
-            <div className="mt-4 flex flex-col gap-2 border-t border-white/15 pt-4">
+            <div className="flex flex-col gap-2 px-4 py-4 border-t border-white/15 bg-white/5">
               <Link
                 href="/login"
-                className={`block text-center rounded-xl px-3 py-2.5 ${linkBase} ${linkInactive}`}
-                style={{ fontSize: '18px' }}
+                className="flex items-center justify-center w-full rounded-xl px-4 py-3 text-white font-poppins font-medium text-[15px] border border-white/20 hover:bg-white/10 active:bg-white/20 transition-colors"
               >
                 Login
               </Link>
               <Link
                 href="/register"
-                className="block w-full text-center bg-white text-[#010806] font-poppins font-medium px-6 py-2.5 rounded-full hover:bg-white/90 transition-colors duration-200"
-                style={{ fontSize: '18px' }}
+                className="flex items-center justify-center w-full bg-white text-[#1B6B4A] font-poppins font-semibold text-[15px] px-4 py-3 rounded-xl hover:bg-white/90 active:bg-white/80 transition-colors"
               >
                 Register
               </Link>
