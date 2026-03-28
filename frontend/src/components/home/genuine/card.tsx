@@ -1,4 +1,7 @@
+'use client';
+
 import React from "react";
+import { useRouter } from "next/navigation";
 
 export type ProfileCardProps = {
     name: string;
@@ -12,6 +15,8 @@ export type ProfileCardProps = {
     job: string;
     joinedDaysAgo: number;
     profileImage?: string;
+    onChatClick?: (e: React.MouseEvent) => void;
+    onViewClick?: (e: React.MouseEvent) => void;
 };
 
 // Dummy data — replace with real API data when backend is ready
@@ -189,6 +194,8 @@ const GenuineProfileCard = ({
     job,
     joinedDaysAgo,
     profileImage,
+    onChatClick,
+    onViewClick,
 }: ProfileCardProps) => {
     return (
         <div className="relative bg-white rounded-[20px] shadow-[0_4px_24px_rgba(0,0,0,0.10)] w-full flex-shrink-0 overflow-visible pt-4 pb-5 px-4">
@@ -270,20 +277,52 @@ const GenuineProfileCard = ({
                 Joined {joinedDaysAgo} days ago
             </p>
 
-            {/* CTA Button */}
-            <button className="w-full bg-[#2D6A5A] hover:bg-[#235548] active:scale-[0.98] transition-all duration-150 text-white title-sub-top font-medium font-poppins py-2 rounded-full shadow-sm">
-                View Profile
-            </button>
+            {/* CTA Buttons */}
+            <div className="flex gap-2 w-full">
+                <button onClick={onViewClick} className="flex-1 bg-white hover:bg-gray-50 border border-gray-200 text-[#1C3B35] transition-all duration-150 title-sub-top font-medium font-poppins py-2 rounded-xl shadow-sm">
+                    View
+                </button>
+                <button onClick={onChatClick} className="flex-[1.5] bg-[#1B6B4A] hover:bg-[#155a3d] active:scale-[0.98] transition-all duration-150 text-white title-sub-top font-medium font-poppins py-2 rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+                    <span className="text-sm">💬</span> Chat
+                </button>
+            </div>
         </div>
     );
 };
 
 // Default export renders all dummy cards (for use in a section)
 const GenuineProfileCards = () => {
+    const router = useRouter();
+    
+    const handleChatClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const token = typeof window !== 'undefined' ? localStorage.getItem('mn_token') : null;
+        if (token) {
+            router.push('/dashboard/chat');
+        } else {
+            router.push('/login');
+        }
+    };
+
+    const handleViewClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const token = typeof window !== 'undefined' ? localStorage.getItem('mn_token') : null;
+        if (token) {
+            router.push('/dashboard/profiles');
+        } else {
+            router.push('/login');
+        }
+    };
+
     return (
         <div className="grid grid-cols-2 gap-2 md:gap-6 sm:grid-cols-2 xl:grid-cols-4 justify-items-center">
             {dummyProfiles.map((profile, idx) => (
-                <GenuineProfileCard key={idx} {...profile} />
+                <GenuineProfileCard 
+                    key={idx} 
+                    {...profile} 
+                    onChatClick={handleChatClick}
+                    onViewClick={handleViewClick}
+                />
             ))}
         </div>
     );

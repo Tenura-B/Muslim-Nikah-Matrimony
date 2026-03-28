@@ -13,6 +13,17 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  
+  const [startId, setStartId] = useState<string | null>(null);
+  const [startName, setStartName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      setStartId(p.get('start'));
+      setStartName(p.get('name'));
+    }
+  }, []);
 
   useEffect(() => {
     profileApi.getMyProfiles().then((r) => {
@@ -29,18 +40,33 @@ export default function ChatPage() {
         ...(r.data?.sent ?? []).map((m: any) => ({ id: m.receiverProfileId, name: m.receiverProfile?.name ?? 'Unknown' })),
         ...(r.data?.received ?? []).map((m: any) => ({ id: m.senderProfileId, name: m.senderProfile?.name ?? 'Unknown' })),
       ];
+      if (startId && startName) {
+        all.unshift({ id: startId, name: startName });
+      }
       // deduplicate
       const seen = new Set();
       setConversations(all.filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
+      if (startId) setSelectedChat(startId);
     });
-  }, [selectedMyProfile]);
+  }, [selectedMyProfile, startId, startName]);
 
   useEffect(() => {
     if (!selectedMyProfile || !selectedChat) return;
-    chatApi.history(selectedMyProfile, selectedChat).then((r) => {
-      setMessages(r.data ?? []);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    });
+    
+    const fetchHistory = () => {
+      chatApi.history(selectedMyProfile, selectedChat).then((r) => {
+        setMessages((prev) => {
+          if (prev.length !== (r.data?.length || 0)) {
+            setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          }
+          return r.data ?? [];
+        });
+      });
+    };
+
+    fetchHistory();
+    const interval = setInterval(fetchHistory, 3000);
+    return () => clearInterval(interval);
   }, [selectedChat, selectedMyProfile]);
 
   const send = async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { authApi } from "@/services/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -306,6 +306,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Redirect already-logged-in users
+  useEffect(() => {
+    const token = localStorage.getItem('mn_token');
+    if (token) router.replace('/dashboard/parent');
+  }, [router]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -336,7 +342,8 @@ export default function RegisterPage() {
       });
       localStorage.setItem("mn_token", res.token);
       localStorage.setItem("mn_user", JSON.stringify(res.user));
-      router.push("/dashboard/parent");
+      // New users must select a package before accessing the dashboard
+      router.push("/packages");
     } catch (e: any) {
       setError(e.message ?? "Registration failed. Please try again.");
     } finally {

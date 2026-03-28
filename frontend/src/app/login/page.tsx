@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { authApi } from "@/services/api";
+import { authApi, subscriptionApi } from "@/services/api";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -12,6 +12,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Redirect already-logged-in users straight to dashboard
+  useEffect(() => {
+    const token = localStorage.getItem('mn_token');
+    const user = localStorage.getItem('mn_user');
+    if (token) {
+      try {
+        const parsed = JSON.parse(user ?? '{}');
+        router.replace(parsed.role === 'ADMIN' ? '/admin' : '/dashboard/parent');
+      } catch {
+        router.replace('/dashboard/parent');
+      }
+    }
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -25,7 +39,22 @@ export default function LoginPage() {
       const res = await authApi.login(formData);
       localStorage.setItem("mn_token", res.token);
       localStorage.setItem("mn_user", JSON.stringify(res.user));
-      router.push(res.user.role === "ADMIN" ? "/admin" : "/dashboard/parent");
+
+      // Admin skips subscription check
+      if (res.user.role === 'ADMIN') {
+        router.push('/admin');
+        return;
+      }
+
+      // Check if user has any active subscription
+      try {
+        const subRes = await subscriptionApi.mySubscriptions();
+        const hasActive = (subRes.data ?? []).some((s: any) => s.subscription?.status === 'ACTIVE');
+        router.push(hasActive ? '/dashboard/parent' : '/packages');
+      } catch {
+        // If subscription check fails, go to packages to be safe
+        router.push('/packages');
+      }
     } catch (e: any) {
       setError(e.message ?? "Login failed. Check your credentials.");
     } finally {

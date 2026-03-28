@@ -1,11 +1,43 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { subscriptionApi } from '@/services/api';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('mn_token');
+    if (!token) { router.replace('/login'); return; }
+
+    const user = JSON.parse(localStorage.getItem('mn_user') ?? '{}');
+    // Admins bypass the subscription check
+    if (user.role === 'ADMIN') { setChecking(false); return; }
+
+    // Check for active subscription
+    subscriptionApi.mySubscriptions()
+      .then((res) => {
+        const hasActive = (res.data ?? []).some((s: any) => s.subscription?.status === 'ACTIVE');
+        if (!hasActive) {
+          router.replace('/packages');
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => router.replace('/packages'));
+  }, [router]);
+
+  if (checking) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-[#1B6B4A] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm text-gray-500 font-poppins">Checking your membership...</p>
+      </div>
+    </div>
+  );
 
   const logout = () => {
     localStorage.removeItem('mn_token');

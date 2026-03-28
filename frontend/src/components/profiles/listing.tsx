@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { publicProfilesApi } from '@/services/api';
+import { publicProfilesApi, profileApi } from '@/services/api';
 import { GenuineProfileCard } from '@/components/home/genuine/card';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type Profile = {
   id: string; memberId: string; name: string; gender: string; age: number;
@@ -93,6 +94,31 @@ export default function ProfilesListing() {
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const PER_PAGE = 9;
+  const router = useRouter();
+
+  const [activeProfiles, setActiveProfiles] = useState<any[]>([]);
+
+  useEffect(() => {
+    profileApi.getMyProfiles().then(r => {
+      const active = (r.data ?? []).filter((p: any) => p.status === 'ACTIVE');
+      setActiveProfiles(active);
+    }).catch(() => {});
+  }, []);
+
+  const handleChatClick = (e: React.MouseEvent, p: Profile) => {
+    e.preventDefault();
+    if (!localStorage.getItem('mn_token')) {
+      alert("Please login to chat with members.");
+      router.push('/login');
+      return;
+    }
+    if (activeProfiles.length === 0) {
+      alert("You need an active paid membership profile to chat with members.");
+      router.push('/dashboard/profiles');
+      return;
+    }
+    router.push(`/dashboard/chat?start=${p.id}&name=${encodeURIComponent(p.name ?? '')}`);
+  };
 
   const load = useCallback((f: Filters) => {
     setLoading(true);
@@ -310,15 +336,19 @@ export default function ProfilesListing() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {paginated.map(p => (
-                  <Link key={p.id} href={`/profiles/${p.id}`} className="block group">
+                  <div key={p.id} className="block group">
                     {/* Member ID badge above card */}
                     <div className="flex items-center gap-1.5 mb-1.5 px-1">
                       <span className="inline-flex items-center gap-1 bg-[#1C3B35]/8 text-[#1C3B35] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-[#1C3B35]/20 tracking-widest group-hover:bg-[#1C3B35]/15 transition">
                         🪪 {p.memberId}
                       </span>
                     </div>
-                    <GenuineProfileCard {...toCardProps(p)} />
-                  </Link>
+                    <GenuineProfileCard 
+                        {...toCardProps(p)} 
+                        onChatClick={(e) => handleChatClick(e, p)}
+                        onViewClick={() => router.push(`/profiles/${p.id}`)}
+                    />
+                  </div>
                 ))}
               </div>
             )}
