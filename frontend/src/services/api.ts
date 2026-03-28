@@ -94,13 +94,21 @@ export const chatApi = {
 // ─── Admin ─────────────────────────────────────────────────────────────────
 export const adminApi = {
   dashboard: () => request<any>('/admin/dashboard'),
-  approvePayment: (body: { paymentId: string; adminNote?: string }) =>
-    request<any>('/admin/payment/approve', { method: 'POST', body: JSON.stringify(body) }),
+
+  // Accept either a plain paymentId string or a full object
+  approvePayment: (paymentIdOrBody: string | { paymentId: string; adminNote?: string }) => {
+    const body = typeof paymentIdOrBody === 'string'
+      ? { paymentId: paymentIdOrBody }
+      : paymentIdOrBody;
+    return request<any>('/admin/payment/approve', { method: 'POST', body: JSON.stringify(body) });
+  },
+
   payments: (status?: string) => request<any>(`/admin/payments${status ? `?status=${status}` : ''}`),
   users: () => request<any>('/admin/users'),
   profiles: (status?: string) => request<any>(`/admin/profiles${status ? `?status=${status}` : ''}`),
 
-  // Analytics
+  // Analytics (both names for compatibility)
+  analytics: () => request<any>('/admin/analytics'),
   getAnalytics: () => request<any>('/admin/analytics'),
 
   // Chat Monitor

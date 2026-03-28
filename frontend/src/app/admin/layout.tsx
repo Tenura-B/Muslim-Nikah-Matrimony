@@ -31,27 +31,11 @@ const navItems = [
     ),
   },
   {
-    href: '/admin/chat', label: 'Chat', exact: false,
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-      </svg>
-    ),
-  },
-  {
     href: '/admin/profiles', label: 'Master File', exact: false,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
         <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />
-      </svg>
-    ),
-  },
-  {
-    href: '/admin/posts', label: 'User Posts', exact: false,
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path d="M4 6h16M4 10h16M4 14h10" /><rect x="3" y="3" width="18" height="18" rx="2" />
       </svg>
     ),
   },
@@ -80,14 +64,6 @@ const navItems = [
       </svg>
     ),
   },
-  {
-    href: '/admin/profile', label: 'Profile', exact: false,
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -95,11 +71,37 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [dark, setDark] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const u = localStorage.getItem('mn_user');
-    if (u) setUser(JSON.parse(u));
-  }, []);
+    const token = localStorage.getItem('mn_token');
+    const raw = localStorage.getItem('mn_user');
+    if (!token || !raw) {
+      router.replace('/login');
+      return;
+    }
+    try {
+      const u = JSON.parse(raw);
+      if (u?.role !== 'ADMIN') {
+        router.replace('/login');
+        return;
+      }
+      setUser(u);
+    } catch {
+      router.replace('/login');
+      return;
+    }
+    setChecking(false);
+  }, [router]);
+
+  if (checking) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#F4F6F9]">
+      <svg className="w-8 h-8 animate-spin text-[#1C3B35]" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+    </div>
+  );
 
   const logout = () => {
     localStorage.removeItem('mn_token');
