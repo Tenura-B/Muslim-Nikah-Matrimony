@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { adminApi } from '@/services/api';
 
 /* ── Tiny SVG bar chart ───────────────────────────────────────────── */
@@ -118,44 +119,43 @@ function StatCard({ label, value, highlight }: { label: string; value: string | 
   );
 }
 
-/* ── Pending table ───────────────────────────────────────────────── */
-const DEMO_PENDING = [
-  { id: '#001', name: 'Ahmed Hassan', age: 26, country: 'Australia', status: 'Pending' },
-  { id: '#002', name: 'Sara Malik', age: 24, country: 'Australia', status: 'Pending' },
-  { id: '#003', name: 'Yusuf Rahman', age: 28, country: 'Australia', status: 'Pending' },
-  { id: '#004', name: 'Nadia Al-Rashid', age: 22, country: 'Australia', status: 'Pending' },
-  { id: '#005', name: 'Omar Farooq', age: 30, country: 'Australia', status: 'Pending' },
-  { id: '#006', name: 'Aisha Begum', age: 25, country: 'Australia', status: 'Pending' },
-  { id: '#007', name: 'Tariq Khan', age: 27, country: 'Sri Lanka', status: 'Pending' },
-  { id: '#008', name: 'Fatima Zahra', age: 23, country: 'Sri Lanka', status: 'Pending' },
-];
+/* ── Pending payments type ──────────────────────────────────────── */
+type PendingPayment = {
+  id: string; amount: number; currency: string; method: string;
+  bankRef?: string; createdAt: string;
+  user?: { email: string };
+  childProfile?: { id: string; name: string; memberId?: string };
+};
 
 /* ── Main page ───────────────────────────────────────────────────── */
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [page, setPage] = useState(1);
+  const router = useRouter();
 
   useEffect(() => {
     adminApi.dashboard().then((r) => setStats(r.data)).catch(() => {}).finally(() => setLoading(false));
+    adminApi.payments('PENDING').then((r) => setPendingPayments(r.data ?? [])).catch(() => {});
   }, []);
 
   const totalUsers = stats?.totalUsers ?? 4521;
   const totalProfiles = stats?.totalProfiles ?? 2847;
   const activeProfiles = stats?.activeProfiles ?? 1293;
-  const pendingPayments = stats?.pendingPayments ?? 23;
+  const pendingCount = stats?.pendingPayments ?? 23;
   const totalRevenue = stats?.totalRevenue ?? 47832;
 
   const row1 = [
     { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, highlight: true },
     { label: 'New Registrations', value: 156 },
     { label: 'Approved Profiles', value: totalProfiles.toLocaleString() },
-    { label: 'Pending Approvals', value: pendingPayments },
+    { label: 'Pending Approvals', value: pendingCount },
   ];
   const row2 = [
     { label: 'Active Subscriptions', value: activeProfiles.toLocaleString() },
     { label: 'Expired Profiles', value: 89 },
-    { label: 'Pending Payments', value: pendingPayments },
+    { label: 'Pending Payments', value: pendingCount },
     { label: 'Total Users', value: totalUsers.toLocaleString() },
   ];
 
@@ -174,8 +174,8 @@ export default function AdminDashboard() {
   ];
 
   const PER_PAGE = 8;
-  const totalPages = Math.ceil(DEMO_PENDING.length / PER_PAGE);
-  const pageData = DEMO_PENDING.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const totalPages = Math.ceil(pendingPayments.length / PER_PAGE);
+  const pageData = pendingPayments.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
     <div className="font-poppins space-y-6">
@@ -268,80 +268,90 @@ export default function AdminDashboard() {
 
       {/* ── Pending Approvals table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Pending Approvals</h2>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-800">Pending Payment Approvals</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Orders placed by customers awaiting your approval</p>
+          </div>
+          <button onClick={() => router.push('/admin/payments')}
+            className="text-xs bg-[#1C3B35] text-white px-4 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold">
+            View All Payments
+          </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {['ID', 'Name', 'Age', 'Country', 'Status', 'Action'].map((h) => (
-                  <th key={h} className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 tracking-wide">
-                    <span className="flex items-center gap-1">{h}
-                      {h !== 'Action' && (
-                        <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
-                      )}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {pageData.map((row, i) => (
-                <tr key={row.id} className={`hover:bg-gray-50 transition ${i % 2 === 1 ? 'bg-[#F9FAFB]' : ''}`}>
-                  <td className="px-6 py-4 text-gray-500 font-mono text-xs">{row.id}</td>
-                  <td className="px-6 py-4 font-medium text-gray-800">{row.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{row.age}</td>
-                  <td className="px-6 py-4 text-gray-600">{row.country}</td>
-                  <td className="px-6 py-4">
-                    <span className="text-[#F59E0B] font-semibold">{row.status}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-gray-400 hover:text-gray-700 transition px-2 py-1 rounded-lg hover:bg-gray-100">
-                      <span className="text-base tracking-widest font-bold">···</span>
-                    </button>
-                  </td>
+          {pendingPayments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+              <span className="text-3xl mb-2">✅</span>
+              <p className="text-sm">No pending payments — all clear!</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  {['Payment ID', 'Customer', 'Profile', 'Amount', 'Method', 'Bank Ref', 'Date', 'Action'].map((h) => (
+                    <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {pageData.map((row, i) => (
+                  <tr key={row.id} className={`hover:bg-amber-50/30 transition border-l-4 border-l-amber-400 ${i % 2 === 1 ? 'bg-[#F9FAFB]' : ''}`}>
+                    <td className="px-5 py-3.5 font-mono text-xs text-gray-500 select-all" title={row.id}>
+                      {row.id.slice(0, 10)}…
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-gray-600">{row.user?.email ?? '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <p className="font-medium text-gray-800">{row.childProfile?.name ?? '—'}</p>
+                      {row.childProfile?.memberId && <p className="text-xs text-gray-400">{row.childProfile.memberId}</p>}
+                    </td>
+                    <td className="px-5 py-3.5 font-semibold text-gray-800">${row.amount} <span className="text-xs font-normal text-gray-400">{row.currency}</span></td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${row.method === 'BANK_TRANSFER' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                        {row.method === 'BANK_TRANSFER' ? '🏦 Bank' : '💳 Online'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-gray-600">{row.bankRef ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-xs text-gray-400 whitespace-nowrap">{new Date(row.createdAt).toLocaleDateString()}</td>
+                    <td className="px-5 py-3.5">
+                      <button onClick={() => router.push('/admin/payments')}
+                        className="text-xs bg-[#1C3B35] text-white px-3 py-1.5 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                        Approve
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Table footer */}
-        <div className="px-6 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-gray-400">
-            Showing data {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, DEMO_PENDING.length)} of {DEMO_PENDING.length} entries
-          </p>
-          <div className="flex items-center gap-2">
-            {/* Export */}
-            <button className="flex items-center gap-1.5 bg-[#1C3B35] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-[#15302a] transition mr-2">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Export CSV
-            </button>
-            {/* Prev */}
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
-            </button>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button key={i} onClick={() => setPage(i + 1)}
-                className={`h-7 w-7 rounded-lg text-xs font-semibold transition ${
-                  page === i + 1 ? 'bg-[#1C3B35] text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'
-                }`}>
-                {i + 1}
+        {pendingPayments.length > 0 && (
+          <div className="px-6 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-gray-400">
+              Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, pendingPayments.length)} of {pendingPayments.length} pending
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
               </button>
-            ))}
-            {/* Next */}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
-            </button>
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button key={i} onClick={() => setPage(i + 1)}
+                  className={`h-7 w-7 rounded-lg text-xs font-semibold transition ${
+                    page === i + 1 ? 'bg-[#1C3B35] text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}>
+                  {i + 1}
+                </button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="h-7 w-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-30 transition">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

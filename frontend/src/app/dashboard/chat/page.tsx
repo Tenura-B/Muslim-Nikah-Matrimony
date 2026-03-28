@@ -1,19 +1,32 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { profileApi, chatApi } from '@/services/api';
+import { getSocket, disconnectSocket } from '@/services/socket';
+
+type Message = {
+  id: string; senderProfileId: string; receiverProfileId: string;
+  content: string; createdAt: string; readAt?: string;
+};
+type Conversation = { id: string; name: string; lastMsg?: string; unread?: number };
 
 export default function ChatPage() {
   const [myProfiles, setMyProfiles] = useState<any[]>([]);
-  const [selectedMyProfile, setSelectedMyProfile] = useState<string>('');
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [selectedChat, setSelectedChat] = useState<string>('');
-  const [messages, setMessages] = useState<any[]>([]);
+  const [selectedMyProfile, setSelectedMyProfile] = useState('');
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedChat, setSelectedChat] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMsg, setNewMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
+  const socketRef = useRef<any>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  
+
+  // URL params (start chat from profile page)
   const [startId, setStartId] = useState<string | null>(null);
   const [startName, setStartName] = useState<string | null>(null);
 
@@ -25,6 +38,7 @@ export default function ChatPage() {
     }
   }, []);
 
+  // Load my active profiles
   useEffect(() => {
     profileApi.getMyProfiles().then((r) => {
       const active = (r.data ?? []).filter((p: any) => p.status === 'ACTIVE');
@@ -33,152 +47,327 @@ export default function ChatPage() {
     }).finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (!selectedMyProfile) return;
-    chatApi.conversations(selectedMyProfile).then((r) => {
-      const all = [
-        ...(r.data?.sent ?? []).map((m: any) => ({ id: m.receiverProfileId, name: m.receiverProfile?.name ?? 'Unknown' })),
-        ...(r.data?.received ?? []).map((m: any) => ({ id: m.senderProfileId, name: m.senderProfile?.name ?? 'Unknown' })),
+  // Load conversations when my profile changes
+  const loadConversations = useCallback((profileId: string) => {
+    chatApi.conversations(profileId).then((r) => {
+      const all: Conversation[] = [
+        ...(r.data?.sent ?? []).map((m: any) => ({
+          id: m.receiverProfileId,
+          name: m.receiverProfile?.name ?? 'Unknown',
+        })),
+        ...(r.data?.received ?? []).map((m: any) => ({
+          id: m.senderProfileId,
+          name: m.senderProfile?.name ?? 'Unknown',
+        })),
       ];
-      if (startId && startName) {
-        all.unshift({ id: startId, name: startName });
-      }
-      // deduplicate
+      if (startId && startName) all.unshift({ id: startId, name: startName });
       const seen = new Set();
-      setConversations(all.filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
+      const deduped = all.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+      setConversations(deduped);
       if (startId) setSelectedChat(startId);
     });
-  }, [selectedMyProfile, startId, startName]);
+  }, [startId, startName]);
 
   useEffect(() => {
-    if (!selectedMyProfile || !selectedChat) return;
-    
-    const fetchHistory = () => {
-      chatApi.history(selectedMyProfile, selectedChat).then((r) => {
-        setMessages((prev) => {
-          if (prev.length !== (r.data?.length || 0)) {
-            setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-          }
-          return r.data ?? [];
-        });
-      });
-    };
+    if (!selectedMyProfile) return;
+    loadConversations(selectedMyProfile);
+  }, [selectedMyProfile, loadConversations]);
 
-    fetchHistory();
-    const interval = setInterval(fetchHistory, 3000);
-    return () => clearInterval(interval);
-  }, [selectedChat, selectedMyProfile]);
-
-  const send = async () => {
-    if (!newMsg.trim() || !selectedChat) return;
-    setSending(true);
-    try {
-      await chatApi.send({ senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content: newMsg.trim() });
-      setNewMsg('');
-      const r = await chatApi.history(selectedMyProfile, selectedChat);
+  // Load message history
+  const loadHistory = useCallback((myId: string, otherId: string) => {
+    chatApi.history(myId, otherId).then(r => {
       setMessages(r.data ?? []);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch (e: any) {
-      alert(e.message);
-    } finally {
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (selectedMyProfile && selectedChat) loadHistory(selectedMyProfile, selectedChat);
+  }, [selectedMyProfile, selectedChat, loadHistory]);
+
+  // ── Socket.IO connection ──────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedMyProfile) return;
+
+    const socket = getSocket(selectedMyProfile);
+    socketRef.current = socket;
+
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('new_message', (msg: Message) => {
+      // Only add if it's relevant to current conversation
+      setMessages(prev => {
+        const alreadyHas = prev.some(m => m.id === msg.id);
+        if (alreadyHas) return prev;
+        // Add to conversation list if new thread
+        if (msg.senderProfileId !== selectedMyProfile) {
+          setConversations(list => {
+            const exists = list.some(c => c.id === msg.senderProfileId);
+            if (!exists) {
+              return [{ id: msg.senderProfileId, name: 'New Message' }, ...list];
+            }
+            return list;
+          });
+        }
+        const newList = [...prev, msg];
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        return newList;
+      });
+    });
+
+    socket.on('user_typing', ({ profileId, isTyping: t }: any) => {
+      if (profileId === selectedChat) setIsTyping(t);
+    });
+
+    return () => {
+      socket.off('new_message');
+      socket.off('user_typing');
+      socket.off('connect');
+      socket.off('disconnect');
+    };
+  }, [selectedMyProfile, selectedChat]);
+
+  // Disconnect on unmount
+  useEffect(() => () => disconnectSocket(), []);
+
+  // ── Send message ──────────────────────────────────────────────────
+  const send = async () => {
+    if (!newMsg.trim() || !selectedChat || sending) return;
+    const content = newMsg.trim();
+    setNewMsg('');
+    setSending(true);
+
+    const socket = socketRef.current;
+
+    if (socket?.connected) {
+      // Real-time via Socket
+      socket.emit('send_message', {
+        senderProfileId: selectedMyProfile,
+        receiverProfileId: selectedChat,
+        content,
+      });
       setSending(false);
+    } else {
+      // Fallback: HTTP
+      try {
+        await chatApi.send({ senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
+        loadHistory(selectedMyProfile, selectedChat);
+      } catch (e: any) { alert(e.message); }
+      finally { setSending(false); }
+    }
+
+    // Reload conversations to show latest
+    loadConversations(selectedMyProfile);
+  };
+
+  // ── Typing indicator ──────────────────────────────────────────────
+  const handleTyping = (val: string) => {
+    setNewMsg(val);
+    const socket = socketRef.current;
+    if (socket?.connected && selectedChat) {
+      socket.emit('typing', { senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, isTyping: true });
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => {
+        socket.emit('typing', { senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, isTyping: false });
+      }, 2000);
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>;
+  const selectedConvName = conversations.find(c => c.id === selectedChat)?.name ?? '';
 
-  if (myProfiles.length === 0) {
-    return (
-      <div className="font-poppins text-center py-20 text-gray-400">
-        <p className="text-4xl mb-3">💬</p>
-        <p className="font-medium">No active profiles</p>
-        <p className="text-sm mt-1">You need an active profile to use chat</p>
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
+      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg> Loading…
+    </div>
+  );
+
+  if (myProfiles.length === 0) return (
+    <div className="font-poppins flex flex-col items-center justify-center py-24 text-gray-400">
+      <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
       </div>
-    );
-  }
+      <p className="font-semibold text-gray-600">No active profiles</p>
+      <p className="text-sm mt-1">You need an active profile to use chat</p>
+      <a href="/dashboard/subscription" className="mt-4 text-xs bg-[#1C3B35] text-white px-5 py-2.5 rounded-xl hover:bg-[#15302a] transition font-semibold">
+        Get Subscription
+      </a>
+    </div>
+  );
 
   return (
-    <div className="font-poppins">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">Messages</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Chat with matches. Contact info is shared when both agree — otherwise chat is always available.</p>
+    <div className="font-poppins space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Messages</h1>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+            <p className="text-gray-400 text-xs">{connected ? 'Connected — real-time' : 'Connecting…'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 whitespace-nowrap">Chatting as:</span>
+          <select value={selectedMyProfile}
+            onChange={(e) => { setSelectedMyProfile(e.target.value); setSelectedChat(''); setMessages([]); setMobileShowChat(false); }}
+            className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 bg-white outline-none focus:border-[#1C3B35] transition">
+            {myProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <a href="/dashboard/members"
+            className="text-xs bg-[#1C3B35] text-white px-4 py-2 rounded-xl hover:bg-[#15302a] transition font-semibold whitespace-nowrap">
+            + Browse
+          </a>
+        </div>
       </div>
 
-      {/* Profile selector */}
-      <div className="mb-4">
-        <label className="text-xs font-medium text-gray-600 block mb-1">Chatting as:</label>
-        <select value={selectedMyProfile} onChange={(e) => setSelectedMyProfile(e.target.value)}
-          className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 outline-none">
-          {myProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </div>
+      {/* Main chat UI */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex" style={{ height: 'calc(100vh - 260px)', minHeight: '500px' }}>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex h-[500px] overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-1/3 border-r border-gray-100 flex flex-col">
-          <div className="p-3 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Conversations</p>
+        {/* ── Conversation list ── */}
+        <div className={`${mobileShowChat ? 'hidden' : 'flex'} md:flex w-full md:w-72 border-r border-gray-100 flex-col flex-shrink-0`}>
+          <div className="px-4 py-4 border-b border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Conversations</p>
+            <p className="text-xs text-gray-400 mt-0.5">{conversations.length} thread{conversations.length !== 1 ? 's' : ''}</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             {conversations.length === 0 ? (
-              <div className="p-6 text-center text-gray-400 text-sm">
-                <p>No conversations yet</p>
-                <p className="text-xs mt-1">Browse profiles to start chatting</p>
+              <div className="flex flex-col items-center justify-center h-full text-gray-300 px-6 text-center py-12">
+                <svg className="w-10 h-10 mb-3" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <p className="text-sm font-medium text-gray-400">No conversations yet</p>
+                <a href="/dashboard/members" className="text-xs text-[#1C3B35] font-semibold mt-2 underline">Browse members →</a>
               </div>
             ) : (
-              conversations.map((c) => (
-                <button key={c.id} onClick={() => setSelectedChat(c.id)}
-                  className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-50 ${selectedChat === c.id ? 'bg-green-50' : ''}`}>
-                  <div className="w-9 h-9 bg-[#1B6B4A]/10 rounded-full flex items-center justify-center text-[#1B6B4A] font-semibold text-sm shrink-0">
-                    {c.name[0]}
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 truncate">{c.name}</span>
-                </button>
-              ))
+              conversations.map(c => {
+                const active = selectedChat === c.id;
+                return (
+                  <button key={c.id}
+                    onClick={() => { setSelectedChat(c.id); setIsTyping(false); setMobileShowChat(true); }}
+                    className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-50 ${active ? 'bg-[#EAF2EE] border-l-4 border-l-[#1C3B35]' : ''}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${active ? 'bg-[#1C3B35] text-white' : 'bg-[#1C3B35]/10 text-[#1C3B35]'}`}>
+                      {c.name?.[0]?.toUpperCase() ?? '?'}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-semibold truncate ${active ? 'text-[#1C3B35]' : 'text-gray-700'}`}>{c.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">Tap to view messages</p>
+                    </div>
+                    {active && <span className="w-2 h-2 rounded-full bg-[#1C3B35] flex-shrink-0" />}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Chat area */}
-        <div className="flex-1 flex flex-col">
+        {/* ── Chat area ── */}
+        <div className={`${!mobileShowChat ? 'hidden' : 'flex'} md:flex flex-1 flex-col min-w-0`}>
           {!selectedChat ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
+            <div className="flex-1 flex items-center justify-center text-gray-300">
               <div className="text-center">
-                <p className="text-3xl mb-2">💬</p>
-                <p>Select a conversation</p>
+                <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-gray-400">Select a conversation</p>
+                <p className="text-xs mt-1 text-gray-300">Or <a href="/dashboard/members" className="text-[#1C3B35] underline">browse members</a> to start a new chat</p>
               </div>
             </div>
           ) : (
             <>
-              <div className="p-3 border-b border-gray-100 bg-gray-50">
-                <p className="text-sm font-semibold text-gray-700">
-                  {conversations.find((c) => c.id === selectedChat)?.name ?? 'Chat'}
-                </p>
+              {/* Chat header */}
+              <div className="px-4 py-3.5 border-b border-gray-100 bg-white flex items-center gap-3">
+                {/* Mobile back */}
+                <button onClick={() => setMobileShowChat(false)} className="md:hidden text-gray-400 p-1">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+                </button>
+                <div className="w-9 h-9 rounded-full bg-[#1C3B35] flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {selectedConvName?.[0]?.toUpperCase() ?? '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{selectedConvName}</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1">
+                    {isTyping
+                      ? <><span className="text-[#1C3B35] animate-pulse font-medium">typing…</span></>
+                      : <><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" /> Active</>
+                    }
+                  </p>
+                </div>
+                <a href={`/dashboard/members/${selectedChat}?viewer=${selectedMyProfile}`}
+                  className="text-xs text-[#1C3B35] border border-[#1C3B35]/20 px-3 py-1.5 rounded-lg hover:bg-[#1C3B35]/5 transition font-semibold flex-shrink-0">
+                  View Profile
+                </a>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                {messages.map((m) => {
-                  const isMine = m.senderProfileId === selectedMyProfile;
-                  return (
-                    <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${isMine ? 'bg-[#1B6B4A] text-white rounded-br-md' : 'bg-gray-100 text-gray-800 rounded-bl-md'}`}>
-                        {m.content}
-                        <p className={`text-xs mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5 bg-[#F9FAFB]">
+                {messages.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center text-gray-300 py-12">
+                      <p className="text-sm">No messages yet</p>
+                      <p className="text-xs mt-1">Say hello to {selectedConvName}! 👋</p>
                     </div>
-                  );
-                })}
+                  </div>
+                ) : (
+                  messages.map((m, i) => {
+                    const isMine = m.senderProfileId === selectedMyProfile;
+                    const prevMsg = messages[i - 1];
+                    const showAvatar = !isMine && (!prevMsg || prevMsg.senderProfileId !== m.senderProfileId);
+                    return (
+                      <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
+                        {!isMine && (
+                          <div className={`w-7 h-7 rounded-full bg-[#1C3B35]/10 flex items-center justify-center text-[#1C3B35] text-xs font-bold flex-shrink-0 ${!showAvatar ? 'invisible' : ''}`}>
+                            {selectedConvName?.[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <div className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isMine ? 'bg-[#1C3B35] text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'}`}>
+                          <p className="leading-relaxed break-words">{m.content}</p>
+                          <p className={`text-xs mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'} text-right`}>
+                            {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {isMine && m.readAt && <span className="ml-1 text-blue-300">✓✓</span>}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {/* Typing indicator bubble */}
+                {isTyping && (
+                  <div className="flex items-end gap-2 justify-start">
+                    <div className="w-7 h-7 rounded-full bg-[#1C3B35]/10 flex items-center justify-center text-[#1C3B35] text-xs font-bold flex-shrink-0">
+                      {selectedConvName?.[0]?.toUpperCase()}
+                    </div>
+                    <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex gap-1 items-center">
+                      {[0, 1, 2].map(i => (
+                        <span key={i} className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div ref={bottomRef} />
               </div>
-              <div className="p-3 border-t border-gray-100 flex gap-2">
-                <input value={newMsg} onChange={(e) => setNewMsg(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-                  placeholder="Type a message..."
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
+
+              {/* Input */}
+              <div className="px-4 py-3 border-t border-gray-100 bg-white flex gap-2 items-end">
+                <input
+                  value={newMsg}
+                  onChange={e => handleTyping(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
+                  placeholder={`Message ${selectedConvName}…`}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white"
+                />
                 <button onClick={send} disabled={sending || !newMsg.trim()}
-                  className="bg-[#1B6B4A] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#155a3d] transition disabled:opacity-50">
-                  {sending ? '...' : 'Send'}
+                  className="bg-[#1C3B35] text-white p-2.5 rounded-xl hover:bg-[#15302a] transition disabled:opacity-50 flex-shrink-0">
+                  {sending
+                    ? <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                    : <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                  }
                 </button>
               </div>
             </>

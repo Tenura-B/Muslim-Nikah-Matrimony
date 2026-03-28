@@ -5,6 +5,71 @@ import { profileApi, paymentApi } from '@/services/api';
 
 const STEPS = ['Personal', 'Location & Edu', 'Family', 'Preferences', 'Review'];
 
+const statusBadge = (s: string) => {
+  const map: Record<string, string> = {
+    ACTIVE: 'bg-green-100 text-green-700',
+    PAYMENT_PENDING: 'bg-amber-100 text-amber-700',
+    EXPIRED: 'bg-red-100 text-red-700',
+    DRAFT: 'bg-gray-100 text-gray-500',
+  };
+  return map[s] ?? 'bg-gray-100 text-gray-500';
+};
+
+/* ── Input helper ─────────────────────────────────────────────────── */
+function Field({
+  label, name, value, onChange, type = 'text', placeholder = '', required = false, children,
+}: any) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      {children ?? (
+        <input
+          type={type} name={name} value={value ?? ''} onChange={onChange}
+          placeholder={placeholder} required={required}
+          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white"
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Delete confirm modal ─────────────────────────────────────────── */
+function DeleteModal({ name, onConfirm, onClose }: { name: string; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" /><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-800">Delete Profile</h3>
+            <p className="text-xs text-gray-400">This action cannot be undone</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600">
+          Are you sure you want to delete <span className="font-semibold text-gray-800">"{name}"</span>? All subscription data will also be removed.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onClose}
+            className="flex-1 border border-gray-200 text-gray-600 text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 bg-red-500 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-red-600 transition">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilesPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,13 +77,18 @@ export default function ProfilesPage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<any>({ gender: 'MALE', dateOfBirth: '', name: '' });
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [initiating, setInitiating] = useState<string | null>(null);
+
+  const showToast = (text: string, ok = true) => {
+    setToast({ text, ok });
+    setTimeout(() => setToast(null), 6000);
+  };
 
   const load = () => {
     setLoading(true);
-    profileApi.getMyProfiles()
-      .then((r) => setProfiles(r.data ?? []))
-      .finally(() => setLoading(false));
+    profileApi.getMyProfiles().then((r) => setProfiles(r.data ?? [])).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -29,226 +99,201 @@ export default function ProfilesPage() {
     setSaving(true);
     try {
       await profileApi.create(form);
-      setMessage('Profile created! Now purchase a subscription to activate it.');
+      showToast('Profile created! Now purchase a subscription to activate it.');
       setShowCreate(false);
       setStep(0);
       setForm({ gender: 'MALE', dateOfBirth: '', name: '' });
       load();
     } catch (e: any) {
-      setMessage(e.message);
-    } finally {
-      setSaving(false);
-    }
+      showToast(e.message ?? 'Failed to create profile', false);
+    } finally { setSaving(false); }
   };
 
   const initiatePayment = async (profileId: string) => {
+    setInitiating(profileId);
     try {
-      const res = await paymentApi.initiate({ childProfileId: profileId, amount: 29.99, method: 'GATEWAY' });
-      // In production, redirect to payment gateway with res.data.id
-      setMessage('Payment initiated! (In production, redirect to gateway with payment ID: ' + res.data.id + ')');
-      setTimeout(() => setMessage(''), 5000);
+      await paymentApi.initiate({ childProfileId: profileId, amount: 29.99, method: 'GATEWAY' });
+      showToast('Payment initiated! Head to Subscription page to complete.');
     } catch (e: any) {
-      setMessage(e.message);
-    }
+      showToast(e.message ?? 'Failed to initiate payment', false);
+    } finally { setInitiating(null); }
   };
 
   const deleteProfile = async (id: string) => {
-    if (!confirm('Delete this profile?')) return;
-    await profileApi.delete(id);
-    load();
+    try {
+      await profileApi.delete(id);
+      setDeleteTarget(null);
+      load();
+      showToast('Profile deleted.');
+    } catch (e: any) {
+      showToast(e.message ?? 'Delete failed', false);
+    }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>;
+  const inputClass = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white';
+  const selectClass = inputClass;
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 gap-3 text-gray-400">
+      <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      Loading...
+    </div>
+  );
 
   return (
-    <div className="font-poppins">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">My Profiles</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage your family members' profiles</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="bg-[#1B6B4A] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#155a3d] transition"
-        >
-          + Create Profile
-        </button>
-      </div>
-
-      {message && (
-        <div className="mb-4 p-4 rounded-xl bg-blue-50 text-blue-700 text-sm border border-blue-100">{message}</div>
+    <>
+      {/* Delete confirm */}
+      {deleteTarget && (
+        <DeleteModal
+          name={deleteTarget.name}
+          onConfirm={() => deleteProfile(deleteTarget.id)}
+          onClose={() => setDeleteTarget(null)}
+        />
       )}
 
-      {/* Create form modal */}
+      {/* Create Profile Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-gray-800">Create Profile — Step {step + 1}/{STEPS.length}</h2>
-              <button onClick={() => { setShowCreate(false); setStep(0); }} className="text-gray-400 hover:text-gray-600">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+            {/* Modal header */}
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="font-bold text-gray-800">Create Profile</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Step {step + 1} of {STEPS.length} — {STEPS[step]}</p>
+              </div>
+              <button onClick={() => { setShowCreate(false); setStep(0); }}
+                className="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-50">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
-            {/* Progress */}
-            <div className="flex gap-1 mb-6">
-              {STEPS.map((s, i) => (
-                <div key={s} className={`h-1 flex-1 rounded-full transition-all ${i <= step ? 'bg-[#1B6B4A]' : 'bg-gray-200'}`} />
-              ))}
+            <div className="px-6 pt-5 pb-2">
+              {/* Progress bar */}
+              <div className="flex gap-1 mb-6">
+                {STEPS.map((s, i) => (
+                  <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-300 ${i <= step ? 'bg-[#1C3B35]' : 'bg-gray-100'}`} />
+                ))}
+              </div>
+
+              {/* Step content */}
+              <div className="space-y-3 min-h-[220px]">
+                {step === 0 && (
+                  <>
+                    <Field label="Full Name" name="name" value={form.name} onChange={handleField} placeholder="e.g. Ahmed Hassan" required />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Gender <span className="text-red-400">*</span></label>
+                        <select name="gender" value={form.gender} onChange={handleField} className={selectClass}>
+                          <option value="MALE">Male</option>
+                          <option value="FEMALE">Female</option>
+                        </select>
+                      </div>
+                      <Field label="Date of Birth" name="dateOfBirth" value={form.dateOfBirth} onChange={handleField} type="date" required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Height (cm)" name="height" value={form.height} onChange={handleField} type="number" placeholder="175" />
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Civil Status</label>
+                        <select name="civilStatus" value={form.civilStatus ?? ''} onChange={handleField} className={selectClass}>
+                          <option value="">Select</option>
+                          <option>Never Married</option><option>Divorced</option><option>Widowed</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {step === 1 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Country" name="country" value={form.country} onChange={handleField} placeholder="Sri Lanka" />
+                      <Field label="City" name="city" value={form.city} onChange={handleField} placeholder="Colombo" />
+                    </div>
+                    <Field label="Education" name="education" value={form.education} onChange={handleField} placeholder="Bachelor's Degree" />
+                    <Field label="Occupation" name="occupation" value={form.occupation} onChange={handleField} placeholder="Software Engineer" />
+                    <Field label="Annual Income" name="annualIncome" value={form.annualIncome} onChange={handleField} placeholder="e.g. $40,000" />
+                  </>
+                )}
+
+                {step === 2 && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Family Status</label>
+                      <select name="familyStatus" value={form.familyStatus ?? ''} onChange={handleField} className={selectClass}>
+                        <option value="">Select</option>
+                        <option>Nuclear</option><option>Joint</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Father's Occupation" name="fatherOccupation" value={form.fatherOccupation} onChange={handleField} />
+                      <Field label="Mother's Occupation" name="motherOccupation" value={form.motherOccupation} onChange={handleField} />
+                    </div>
+                    <Field label="Number of Siblings" name="siblings" value={form.siblings} onChange={handleField} type="number" placeholder="2" />
+                  </>
+                )}
+
+                {step === 3 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Min Age Preference" name="minAgePreference" value={form.minAgePreference} onChange={handleField} type="number" placeholder="22" />
+                      <Field label="Max Age Preference" name="maxAgePreference" value={form.maxAgePreference} onChange={handleField} type="number" placeholder="35" />
+                    </div>
+                    <Field label="Country Preference" name="countryPreference" value={form.countryPreference} onChange={handleField} placeholder="Any country" />
+                    <Field label="Min Height Preference (cm)" name="minHeightPreference" value={form.minHeightPreference} onChange={handleField} type="number" placeholder="160" />
+                  </>
+                )}
+
+                {step === 4 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 mb-2">Review your details</p>
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                      {[
+                        ['Name', form.name], ['Gender', form.gender], ['Date of Birth', form.dateOfBirth],
+                        ['Country', form.country], ['City', form.city], ['Education', form.education],
+                        ['Occupation', form.occupation],
+                      ].filter(([, v]) => v).map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="text-gray-400">{k}</span>
+                          <span className="font-medium text-gray-700">{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      A bio and expectations will be auto-generated. You can edit them after creation.
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Step content */}
-            {step === 0 && (
-              <div className="flex flex-col gap-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Full Name *</label>
-                  <input name="name" value={form.name} onChange={handleField} required
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" placeholder="Enter name" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Gender *</label>
-                  <select name="gender" value={form.gender} onChange={handleField}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none">
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Date of Birth *</label>
-                  <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleField}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Height (cm)</label>
-                    <input type="number" name="height" value={form.height ?? ''} onChange={handleField} placeholder="e.g. 175"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Civil Status</label>
-                    <select name="civilStatus" value={form.civilStatus ?? ''} onChange={handleField}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none">
-                      <option value="">Select</option>
-                      <option>Never Married</option>
-                      <option>Divorced</option>
-                      <option>Widowed</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Country</label>
-                    <input name="country" value={form.country ?? ''} onChange={handleField} placeholder="Sri Lanka"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">City</label>
-                    <input name="city" value={form.city ?? ''} onChange={handleField} placeholder="Colombo"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Education</label>
-                  <input name="education" value={form.education ?? ''} onChange={handleField} placeholder="Bachelor's Degree"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Occupation</label>
-                  <input name="occupation" value={form.occupation ?? ''} onChange={handleField} placeholder="Software Engineer"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="flex flex-col gap-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Family Status</label>
-                  <select name="familyStatus" value={form.familyStatus ?? ''} onChange={handleField}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none">
-                    <option value="">Select</option>
-                    <option>Nuclear</option>
-                    <option>Joint</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Father's Occupation</label>
-                    <input name="fatherOccupation" value={form.fatherOccupation ?? ''} onChange={handleField}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Mother's Occupation</label>
-                    <input name="motherOccupation" value={form.motherOccupation ?? ''} onChange={handleField}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Number of Siblings</label>
-                  <input type="number" name="siblings" value={form.siblings ?? ''} onChange={handleField} min="0"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Min Age Preference</label>
-                    <input type="number" name="minAgePreference" value={form.minAgePreference ?? ''} onChange={handleField}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Max Age Preference</label>
-                    <input type="number" name="maxAgePreference" value={form.maxAgePreference ?? ''} onChange={handleField}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Country Preference</label>
-                  <input name="countryPreference" value={form.countryPreference ?? ''} onChange={handleField} placeholder="Any country"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Min Height Preference (cm)</label>
-                  <input type="number" name="minHeightPreference" value={form.minHeightPreference ?? ''} onChange={handleField}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#1B6B4A]/15 focus:border-[#1B6B4A] outline-none" />
-                </div>
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="flex flex-col gap-3">
-                <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700 space-y-2">
-                  <p><strong>Name:</strong> {form.name}</p>
-                  <p><strong>Gender:</strong> {form.gender}</p>
-                  <p><strong>DOB:</strong> {form.dateOfBirth}</p>
-                  {form.country && <p><strong>Country:</strong> {form.country}</p>}
-                  {form.education && <p><strong>Education:</strong> {form.education}</p>}
-                </div>
-                <p className="text-xs text-gray-500">A bio and expectations will be auto-generated based on your profile. You can edit them after creation.</p>
-              </div>
-            )}
-
-            {/* Nav buttons */}
-            <div className="flex justify-between mt-6">
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-between gap-3">
               <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition">
+                className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 disabled:opacity-30 hover:bg-gray-50 transition font-semibold">
                 Back
               </button>
               {step < 4 ? (
-                <button onClick={() => setStep((s) => s + 1)}
-                  className="px-5 py-2 bg-[#1B6B4A] text-white rounded-xl text-sm font-semibold hover:bg-[#155a3d] transition">
-                  Next
+                <button
+                  onClick={() => setStep((s) => s + 1)}
+                  disabled={step === 0 && (!form.name || !form.dateOfBirth)}
+                  className="px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition disabled:opacity-50">
+                  Next →
                 </button>
               ) : (
                 <button onClick={createProfile} disabled={saving || !form.name || !form.dateOfBirth}
-                  className="px-5 py-2 bg-[#1B6B4A] text-white rounded-xl text-sm font-semibold hover:bg-[#155a3d] transition disabled:opacity-50">
-                  {saving ? 'Creating...' : 'Create Profile'}
+                  className="px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition disabled:opacity-50 flex items-center gap-2">
+                  {saving ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : null}
+                  {saving ? 'Creating…' : '✓ Create Profile'}
                 </button>
               )}
             </div>
@@ -256,50 +301,166 @@ export default function ProfilesPage() {
         </div>
       )}
 
-      {/* Profiles list */}
-      {profiles.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center text-gray-400">
-          <p className="text-5xl mb-4">👤</p>
-          <p className="font-medium">No profiles yet</p>
-          <p className="text-sm mt-1">Click "Create Profile" to get started</p>
+      <div className="font-poppins space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">My Profiles</h1>
+            <p className="text-gray-400 text-sm mt-0.5">Manage your family members' matrimonial profiles</p>
+          </div>
+          <button onClick={() => setShowCreate(true)}
+            className="text-sm bg-[#1C3B35] text-white px-5 py-2.5 rounded-xl hover:bg-[#15302a] transition font-semibold flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Create Profile
+          </button>
         </div>
-      ) : (
-        <div className="grid gap-4">
-          {profiles.map((p) => (
-            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-start justify-between hover:shadow-md transition">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-semibold text-gray-800">{p.name}</h3>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                    p.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                    p.status === 'DRAFT' ? 'bg-gray-100 text-gray-600' :
-                    p.status === 'PAYMENT_PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
-                  }`}>{p.status}</span>
-                </div>
-                <p className="text-sm text-gray-500">{p.gender} · {p.country ?? 'Not specified'} · {p.education ?? 'N/A'}</p>
-                {p.subscription && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Subscription: <span className={p.subscription.status === 'ACTIVE' ? 'text-green-600' : 'text-red-500'}>{p.subscription.status}</span>
-                    {p.subscription.endDate && ` · Expires ${new Date(p.subscription.endDate).toLocaleDateString()}`}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2 items-end">
-                {(p.status === 'DRAFT' || p.status === 'EXPIRED') && (
-                  <button onClick={() => initiatePayment(p.id)}
-                    className="text-xs bg-[#1B6B4A] text-white px-3 py-1.5 rounded-lg hover:bg-[#155a3d] transition">
-                    {p.status === 'EXPIRED' ? 'Renew' : 'Activate'}
-                  </button>
-                )}
-                <button onClick={() => deleteProfile(p.id)}
-                  className="text-xs text-red-500 hover:text-red-700 transition">
-                  Delete
-                </button>
-              </div>
+
+        {/* Toast */}
+        {toast && (
+          <div className={`p-4 rounded-xl text-sm font-medium border ${toast.ok ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+            {toast.text}
+          </div>
+        )}
+
+        {/* Profile cards */}
+        {profiles.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center text-gray-400">
+            <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+              </svg>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+            <p className="font-semibold text-gray-500">No profiles yet</p>
+            <p className="text-sm mt-1 mb-5">Add your first family member to get started</p>
+            <button onClick={() => setShowCreate(true)}
+              className="text-sm bg-[#1C3B35] text-white px-5 py-2.5 rounded-xl hover:bg-[#15302a] transition font-semibold inline-flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create First Profile
+            </button>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {profiles.map((p) => (
+              <div key={p.id}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                {/* Card header */}
+                <div className={`px-5 py-4 border-b border-gray-50 flex items-center justify-between ${
+                  p.status === 'ACTIVE' ? 'bg-green-50' :
+                  p.status === 'PAYMENT_PENDING' ? 'bg-amber-50' : 'bg-gray-50'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                      p.status === 'ACTIVE' ? 'bg-[#1C3B35] text-white' : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {p.name?.[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">{p.name}</p>
+                      {p.memberId && <p className="text-xs text-gray-400 font-mono">{p.memberId}</p>}
+                    </div>
+                  </div>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusBadge(p.status)}`}>
+                    {p.status.replace('_', ' ')}
+                  </span>
+                </div>
+
+                {/* Card body */}
+                <div className="px-5 py-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                      </svg>
+                      <span className="capitalize">{p.gender?.toLowerCase() ?? '—'}</span>
+                    </div>
+                    {p.country && (
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                        </svg>
+                        {p.city ? `${p.city}, ` : ''}{p.country}
+                      </div>
+                    )}
+                    {p.education && (
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
+                        </svg>
+                        {p.education}
+                      </div>
+                    )}
+                    {p.occupation && (
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+                        </svg>
+                        {p.occupation}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subscription info */}
+                  {p.subscription && (
+                    <div className={`mt-2 rounded-lg px-3 py-2 text-xs flex items-center justify-between ${
+                      p.subscription.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500'
+                    }`}>
+                      <span>Subscription: <strong>{p.subscription.status}</strong></span>
+                      {p.subscription.endDate && (
+                        <span className="text-[10px] opacity-70">Expires {new Date(p.subscription.endDate).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Card footer actions */}
+                <div className="px-5 py-3 border-t border-gray-50 flex items-center justify-between gap-2">
+                  <div className="flex gap-2">
+                    {(p.status === 'DRAFT' || p.status === 'EXPIRED') && (
+                      <button
+                        onClick={() => initiatePayment(p.id)}
+                        disabled={initiating === p.id}
+                        className="text-xs bg-[#1C3B35] text-white px-3.5 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold disabled:opacity-50 flex items-center gap-1.5">
+                        {initiating === p.id ? (
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+                          </svg>
+                        )}
+                        {p.status === 'EXPIRED' ? 'Renew' : 'Activate'}
+                      </button>
+                    )}
+                    {p.status === 'ACTIVE' && (
+                      <a href={`/dashboard/chat`}
+                        className="text-xs border border-[#1C3B35] text-[#1C3B35] px-3.5 py-2 rounded-lg hover:bg-[#1C3B35]/5 transition font-semibold flex items-center gap-1.5">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                        Chat
+                      </a>
+                    )}
+                  </div>
+                  <button onClick={() => setDeleteTarget(p)}
+                    className="text-xs text-gray-400 hover:text-red-500 transition flex items-center gap-1 py-2 px-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                    </svg>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

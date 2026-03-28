@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3002/api';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
