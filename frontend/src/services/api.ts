@@ -138,4 +138,7 @@ export const publicProfilesApi = {
     const qs = params.toString();
     return request<any>(`/profiles/public${qs ? `?${qs}` : ''}`);
   },
+
+  getById: (id: string) => request<any>(`/profile/public/${id}`),
 };
+

@@ -32,6 +32,11 @@ export class PublicPackagesController {
       gender, city, ethnicity, civilStatus, education, occupation, memberId,
     });
   }
+
+  @Get('profiles/public/:id')
+  getPublicProfile(@Param('id') id: string) {
+    return this.service.getPublicProfile(id);
+  }
 }
 
 
@@ -57,6 +62,21 @@ export class AdminController {
 
   @Get('profiles')
   profiles(@Query('status') status?: string) { return this.service.getAllProfiles(status); }
+
+  @Get('analytics')
+  analytics() { return this.service.getAnalytics(); }
+
+  // ─ Boosts ───────────────────────────────────────────────
+  @Get('boosts')
+  getBoosts() { return this.service.getBoosts(); }
+
+  @Delete('boosts/:id')
+  removeBoost(@Param('id') id: string) { return this.service.removeBoost(id); }
+
+  @Put('boosts/:id/extend')
+  extendBoost(@Param('id') id: string, @Body() body: { days: number }) {
+    return this.service.extendBoost(id, body.days);
+  }
 
   // ─── Packages ─────────────────────────────────────────────────────────────
   @Get('packages')

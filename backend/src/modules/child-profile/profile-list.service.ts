@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RuleEngineService } from '../rule-engine/rule-engine.service';
-import { SubscriptionStatus } from '@prisma/client';
 
 @Injectable()
 export class ProfileListService {
@@ -58,5 +57,61 @@ export class ProfileListService {
     this.logger.log(`getVisibleProfiles: ${sanitized.length} profiles for viewer=${viewerProfileId}`);
 
     return { success: true, data: sanitized, total: sanitized.length };
+  }
+
+  /** Public profile detail — no auth needed. Atomically increments viewCount. */
+  async getPublicProfile(profileId: string) {
+    const profile = await this.prisma.childProfile.update({
+      where: { id: profileId },
+      data: { viewCount: { increment: 1 } } as any,
+      include: { subscription: true },
+    }).catch(() => null);
+
+    if (!profile || profile.status !== 'ACTIVE') {
+      throw new NotFoundException({ success: false, message: 'Profile not found', error_code: 'NOT_FOUND' });
+    }
+
+    const age = Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+    const isVip = !!(profile.boostExpiresAt && new Date(profile.boostExpiresAt as any) > new Date());
+    const displayName = !profile.showRealName && (profile as any).nickname ? (profile as any).nickname : profile.name;
+    const p = profile as any;
+
+    return {
+      success: true,
+      data: {
+        id: p.id,
+        memberId: p.memberId,
+        name: displayName,
+        gender: p.gender,
+        age,
+        height: p.height,
+        weight: p.weight,
+        complexion: p.complexion,
+        appearance: p.appearance,
+        dressCode: p.dressCode,
+        ethnicity: p.ethnicity,
+        civilStatus: p.civilStatus,
+        children: p.children,
+        country: p.country,
+        city: p.city,
+        education: p.education,
+        occupation: p.occupation,
+        annualIncome: p.annualIncome,
+        familyStatus: p.familyStatus,
+        fatherOccupation: p.fatherOccupation,
+        motherOccupation: p.motherOccupation,
+        siblings: p.siblings,
+        minAgePreference: p.minAgePreference,
+        maxAgePreference: p.maxAgePreference,
+        countryPreference: p.countryPreference,
+        aboutUs: p.aboutUs,
+        expectations: p.expectations,
+        viewCount: p.viewCount,
+        isVip,
+        boostExpiresAt: p.boostExpiresAt,
+        createdAt: p.createdAt,
+        _meta: { nameIsNickname: !p.showRealName },
+      },
+    };
   }
 }

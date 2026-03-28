@@ -69,7 +69,7 @@ export class AdminService {
     return { success: true, data: users };
   }
 
-  // ─── Profiles ─────────────────────────────────────────────────────────────
+  // ─── Profiles ─────────────────────────────────────────────────
   async getAllProfiles(status?: string) {
     const profiles = await this.prisma.childProfile.findMany({
       where: status ? { status: status as any } : undefined,
@@ -77,6 +77,108 @@ export class AdminService {
       orderBy: { createdAt: 'desc' },
     });
     return { success: true, data: profiles };
+  }
+
+  // ─── Boosts ─────────────────────────────────────────────────
+  async getBoosts() {
+    const now = new Date();
+    const profiles = await this.prisma.childProfile.findMany({
+      where: { boostExpiresAt: { not: null } },
+      select: {
+        id: true, memberId: true, name: true, gender: true, city: true, country: true,
+        boostExpiresAt: true, status: true, viewCount: true,
+        user: { select: { email: true } },
+      },
+      orderBy: { boostExpiresAt: 'desc' },
+    });
+    return {
+      success: true,
+      data: profiles.map(p => ({
+        ...p,
+        isActive: p.boostExpiresAt ? new Date(p.boostExpiresAt) > now : false,
+        daysLeft: p.boostExpiresAt
+          ? Math.max(0, Math.ceil((new Date(p.boostExpiresAt).getTime() - now.getTime()) / 86400000))
+          : 0,
+      })),
+    };
+  }
+
+  async removeBoost(id: string) {
+    await this.prisma.childProfile.update({
+      where: { id },
+      data: { boostExpiresAt: null },
+    });
+    return { success: true, message: 'Boost removed' };
+  }
+
+  async extendBoost(id: string, days: number) {
+    const profile = await this.prisma.childProfile.findUnique({ where: { id }, select: { boostExpiresAt: true } });
+    if (!profile) throw new NotFoundException('Profile not found');
+    const base = profile.boostExpiresAt && new Date(profile.boostExpiresAt) > new Date()
+      ? new Date(profile.boostExpiresAt)
+      : new Date();
+    const newExpiry = new Date(base.getTime() + days * 86400000);
+    await this.prisma.childProfile.update({ where: { id }, data: { boostExpiresAt: newExpiry } });
+    return { success: true, data: { boostExpiresAt: newExpiry } };
+  }
+
+  // ─── Analytics ───────────────────────────────────────────────
+  async getAnalytics() {
+    const now = new Date();
+    const [totalUsers, totalProfiles, activeProfiles, pendingPayments, totalRevenue,
+      activeBoosts, totalMessages, topViewed] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.childProfile.count(),
+      this.prisma.childProfile.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.payment.count({ where: { status: 'PENDING' } }),
+      this.prisma.payment.aggregate({ where: { status: 'SUCCESS' }, _sum: { amount: true } }),
+      this.prisma.childProfile.count({ where: { boostExpiresAt: { gt: now } } }),
+      this.prisma.chatMessage.count(),
+      this.prisma.childProfile.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true, memberId: true, name: true, viewCount: true, gender: true, city: true },
+        orderBy: { viewCount: 'desc' },
+        take: 5,
+      }),
+    ]);
+    return {
+      success: true,
+      data: {
+        totalUsers, totalProfiles, activeProfiles, pendingPayments,
+        totalRevenue: totalRevenue._sum.amount ?? 0,
+        activeBoosts, totalMessages,
+        topViewed,
+      },
+    };
+  }
+
+  // ─── Public single profile (increments viewCount) ─────────────────
+  async getPublicProfile(id: string) {
+    const profile: any = await this.prisma.childProfile.findFirst({
+      where: { id, status: 'ACTIVE' },
+      select: {
+        id: true, memberId: true, name: true, gender: true, dateOfBirth: true,
+        height: true, weight: true, complexion: true, ethnicity: true, civilStatus: true,
+        children: true, country: true, city: true, education: true, occupation: true,
+        annualIncome: true, familyStatus: true, fatherOccupation: true, motherOccupation: true,
+        siblings: true, minAgePreference: true, maxAgePreference: true, countryPreference: true,
+        aboutUs: true, expectations: true, createdAt: true,
+        showRealName: true, nickname: true, boostExpiresAt: true, viewCount: true,
+      },
+    });
+
+    if (!profile) throw new NotFoundException('Profile not found');
+
+    // Increment view count (fire and forget)
+    this.prisma.childProfile.update({ where: { id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
+
+    const now = new Date();
+    const dob = new Date(profile.dateOfBirth);
+    const age = Math.floor((now.getTime() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+    const displayName = !profile.showRealName && profile.nickname ? profile.nickname : profile.name;
+    const isVip = profile.boostExpiresAt && new Date(profile.boostExpiresAt) > now;
+    const { showRealName, nickname, boostExpiresAt, ...rest } = profile;
+    return { success: true, data: { ...rest, name: displayName, age, isVip } };
   }
 
   // ─── Dashboard stats ──────────────────────────────────────────────────────
