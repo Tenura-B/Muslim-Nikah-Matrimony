@@ -55,6 +55,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [totalUnread, setTotalUnread] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem('mn_token');
@@ -90,6 +91,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  // Listen for unread count changes from the chat page
+  useEffect(() => {
+    // Load initial count from localStorage
+    const stored = parseInt(localStorage.getItem('mn_unread') ?? '0', 10);
+    if (!isNaN(stored)) setTotalUnread(stored);
+
+    const handler = (e: Event) => {
+      const count = (e as CustomEvent<number>).detail ?? 0;
+      setTotalUnread(count);
+    };
+    window.addEventListener('mn_unread_change', handler);
+    return () => window.removeEventListener('mn_unread_change', handler);
+  }, []);
+
   const isActive = (item: { href: string; exact: boolean }) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href);
 
@@ -123,6 +138,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const active = isActive(item);
+          const isMessages = item.href === '/dashboard/chat';
+          const showBadge = isMessages && totalUnread > 0 && !active;
           return (
             <a key={item.href} href={item.href}
               onClick={() => setMobileOpen(false)}
@@ -133,7 +150,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               }`}>
               <span className={active ? 'text-white' : 'text-white/50'}>{item.icon}</span>
               {item.label}
-              {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#D4A843]" />}
+              <span className="ml-auto flex items-center gap-1.5">
+                {showBadge && (
+                  <span className="min-w-[18px] h-[18px] bg-[#22C55E] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                )}
+                {active && !showBadge && <span className="w-1.5 h-1.5 rounded-full bg-[#D4A843]" />}
+              </span>
             </a>
           );
         })}

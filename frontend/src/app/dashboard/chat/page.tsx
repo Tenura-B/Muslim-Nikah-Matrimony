@@ -8,7 +8,16 @@ type Message = {
   id: string; senderProfileId: string; receiverProfileId: string;
   content: string; createdAt: string; readAt?: string | null;
 };
-type Conversation = { id: string; name: string; lastMsg?: string; unread?: number };
+type Conversation = { id: string; name: string; lastMsg?: string };
+
+// Broadcast total unread count to the rest of the app (e.g. nav badge)
+function broadcastUnread(counts: Record<string, number>) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('mn_unread', String(total));
+    window.dispatchEvent(new CustomEvent('mn_unread_change', { detail: total }));
+  }
+}
 
 /* ── Tick components ──────────────────────────────────────────────── */
 const SingleTick = () => (
@@ -39,6 +48,7 @@ export default function ChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [connected, setConnected] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const socketRef = useRef<any>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -126,14 +136,21 @@ export default function ChatPage() {
     socket.on('new_message', (msg: Message) => {
       setMessages(prev => {
         if (prev.some(m => m.id === msg.id)) return prev;
-        // New conversation thread
+        // Message from someone else
         if (msg.senderProfileId !== selectedMyProfile) {
           setConversations(list => {
             const exists = list.some(c => c.id === msg.senderProfileId);
             return exists ? list : [{ id: msg.senderProfileId, name: 'New Message' }, ...list];
           });
-          // Auto mark read if this conversation is active
-          if (msg.senderProfileId === selectedChatRef.current && socket.connected) {
+          // If it's NOT the open conversation, increment unread count + play sound notification
+          if (msg.senderProfileId !== selectedChatRef.current) {
+            setUnreadCounts(prev => {
+              const next = { ...prev, [msg.senderProfileId]: (prev[msg.senderProfileId] ?? 0) + 1 };
+              broadcastUnread(next);
+              return next;
+            });
+          } else if (socket.connected) {
+            // It IS the open conversation — mark as read immediately
             socket.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: msg.senderProfileId });
           }
         }
@@ -272,26 +289,43 @@ export default function ChatPage() {
             ) : (
               conversations.map(c => {
                 const active = selectedChat === c.id;
+                const unread = unreadCounts[c.id] ?? 0;
                 return (
                   <button key={c.id}
                     onClick={() => {
                       setSelectedChat(c.id);
                       setIsTyping(false);
                       setMobileShowChat(true);
+                      // Clear unread count for this conversation
+                      setUnreadCounts(prev => {
+                        const next = { ...prev, [c.id]: 0 };
+                        broadcastUnread(next);
+                        return next;
+                      });
                       // Emit mark_read immediately on click
                       if (socketRef.current?.connected) {
                         socketRef.current.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: c.id });
                       }
                     }}
                     className={`w-full text-left px-4 py-3.5 flex items-center gap-3 hover:bg-gray-50 transition border-b border-gray-50 ${active ? 'bg-[#EAF2EE] border-l-4 border-l-[#1C3B35]' : ''}`}>
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${active ? 'bg-[#1C3B35] text-white' : 'bg-[#1C3B35]/10 text-[#1C3B35]'}`}>
-                      {c.name?.[0]?.toUpperCase() ?? '?'}
+                    <div className="relative flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${active ? 'bg-[#1C3B35] text-white' : 'bg-[#1C3B35]/10 text-[#1C3B35]'}`}>
+                        {c.name?.[0]?.toUpperCase() ?? '?'}
+                      </div>
+                      {/* Unread badge on avatar */}
+                      {unread > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#22C55E] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm">
+                          {unread > 99 ? '99+' : unread}
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold truncate ${active ? 'text-[#1C3B35]' : 'text-gray-700'}`}>{c.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">Tap to view messages</p>
+                      <p className={`text-sm font-semibold truncate ${unread > 0 ? 'text-gray-900' : active ? 'text-[#1C3B35]' : 'text-gray-700'}`}>{c.name}</p>
+                      <p className={`text-xs mt-0.5 truncate ${unread > 0 ? 'text-[#1C3B35] font-medium' : 'text-gray-400'}`}>
+                        {unread > 0 ? `${unread} new message${unread > 1 ? 's' : ''}` : 'Tap to view messages'}
+                      </p>
                     </div>
-                    {active && <span className="w-2 h-2 rounded-full bg-[#1C3B35] flex-shrink-0" />}
+                    {active && unread === 0 && <span className="w-2 h-2 rounded-full bg-[#1C3B35] flex-shrink-0" />}
                   </button>
                 );
               })
