@@ -16,10 +16,18 @@ import { RuleEngineModule } from './modules/rule-engine/rule-engine.module';
 import { SubscriptionCron } from './cron/subscription.cron';
 import { AppEventListener } from './events/app-events.listener';
 import { TrafficModule } from './modules/traffic/traffic.module';
+import { envValidationSchema } from './config/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        allowUnknown: true,   // allow extra env vars (e.g. CI/CD injected ones)
+        abortEarly: false,    // report ALL missing vars at once, not just the first
+      },
+    }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
