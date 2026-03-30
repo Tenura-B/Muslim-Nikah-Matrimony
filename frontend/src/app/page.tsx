@@ -15,7 +15,7 @@ function page() {
     <main>
       <AosInit />
       <Hero />
-      <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="1500" data-aos-easing="ease-in-out">
+      <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="2000">
       <About />
       <JourneyCards />
       </div>

@@ -9,7 +9,7 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 w-full h-full">
         <Image
-          src="/images/hero/geminimobile (1).png"
+          src="/images/hero/gemMobile.png"
           alt="Muslim Nikah Matrimony Hero"
           fill
           priority
