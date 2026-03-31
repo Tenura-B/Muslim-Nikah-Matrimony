@@ -223,6 +223,11 @@ jobs:
               exit 1
             fi
 
+            # Avoid name conflicts when project prefix or container_name changed between deploys
+            docker compose --env-file .env -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+            docker ps -aq --filter name=muslim-nikah-backend | xargs -r docker rm -f
+            docker ps -aq --filter name=muslim-nikah-frontend | xargs -r docker rm -f
+
             docker compose --env-file .env -f docker-compose.prod.yml pull
-            docker compose --env-file .env -f docker-compose.prod.yml up -d
+            docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
