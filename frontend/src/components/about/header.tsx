@@ -1,7 +1,42 @@
-import React from "react";
+"use client";
+
+import React, { useRef } from "react";
 import Image from "next/image";
+import { gsap } from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(SplitText, ScrollTrigger, useGSAP);
 
 const AboutHeader = () => {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useGSAP(() => {
+    if (!headingRef.current) return;
+
+    const split = SplitText.create(headingRef.current, {
+      type: "words",
+      autoSplit: true,
+      onSplit(self) {
+        return gsap.from(self.words, {
+          opacity: 0,
+          y: 40,
+          duration: 1,
+          ease: "power3.out",
+          stagger: 0.08,
+          scrollTrigger: {
+            trigger: headingRef.current,
+            start: "top 85%",
+            once: true,
+          },
+        });
+      },
+    });
+
+    return () => split.revert();
+  }, { scope: headingRef });
+
   return (
     <section className="relative w-full bg-[#085140] overflow-hidden">
       {/* Background image */}
@@ -25,7 +60,7 @@ const AboutHeader = () => {
         </p>
 
         {/* Heading */}
-        <h1 className="title font-poppins font-medium text-white leading-tight max-w-4xl">
+        <h1 ref={headingRef} className="title font-poppins font-medium text-white leading-tight max-w-4xl">
           Meaningful Matches,
           <br />
           Guided by{" "}

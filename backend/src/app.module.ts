@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -19,6 +21,7 @@ import { TrafficModule } from './modules/traffic/traffic.module';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
+  controllers: [AppController],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -43,6 +46,6 @@ import { envValidationSchema } from './config/env.validation';
     RuleEngineModule,
     TrafficModule,
   ],
-  providers: [SubscriptionCron, AppEventListener],
+  providers: [AppService, SubscriptionCron, AppEventListener],
 })
 export class AppModule {}

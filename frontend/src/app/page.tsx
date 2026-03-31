@@ -20,9 +20,13 @@ function page() {
       <JourneyCards />
       </div>
       <GenuineSection />
+      <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="1500">
       <SafetyHeader />
       <SafetyCards />
+      </div>
+      <div data-aos="fade-up"  data-aos-duration="1500">
       <EverythingSection />
+      </div>  
       <ReadySection />
   
     </main>

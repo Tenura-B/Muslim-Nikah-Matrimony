@@ -9,7 +9,9 @@ function ContactPage() {
     <div>
         <ContactHero />
         <ContactInfoSection />
+        <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="2000">
         <ContactFormSection />
+        </div>
         <ReadySection />        
     </div>
   )

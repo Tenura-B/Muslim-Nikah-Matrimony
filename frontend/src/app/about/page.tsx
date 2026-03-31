@@ -9,9 +9,13 @@ function page() {
   return (
     <main>
       <AboutHeader />
+      <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="2000">
       <BuiltSection />
       <MissionSection />
+      </div>
+      <div data-aos="fade-up" data-aos-delay="100" data-aos-duration="2000">
       <WhyChooseSection />
+      </div>
       <ReadySection />
     </main>
   )
