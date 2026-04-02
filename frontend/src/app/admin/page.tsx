@@ -3,6 +3,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/services/api';
+import type { LucideIcon } from 'lucide-react';
+import {
+  CircleDollarSign,
+  ClipboardCheck,
+  CreditCard,
+  HandCoins,
+  UserCheck,
+  UserCircle,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const LiveTrafficWidget = dynamic(() => import('@/components/admin/LiveTrafficWidget'), { ssr: false });
@@ -105,21 +116,57 @@ function LineChart({ data }: { data: ChartPoint[] }) {
   );
 }
 
-/* ── Stat card ───────────────────────────────────────────────────── */
-function StatCard({ label, value, highlight, sub }: { label: string; value: string | number; highlight?: boolean; sub?: string }) {
+const HIGHLIGHT_GRAIN =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+type StatCardItem = {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: LucideIcon;
+};
+
+/* ── Stat card ── */
+function StatCard({ item, selected, onSelect }: { item: StatCardItem; selected: boolean; onSelect: () => void }) {
+  const { label, value, sub, icon: Icon } = item;
+
   return (
-    <div className={`rounded-2xl p-5 flex items-center gap-4 ${highlight ? 'bg-[#1C3B35] text-white' : 'bg-white text-gray-800 border border-gray-100'}`}>
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${highlight ? 'bg-white/15' : 'bg-[#EAF2EE]'}`}>
-        <svg className={`w-5 h-5 ${highlight ? 'text-white' : 'text-[#1C3B35]'}`} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-        </svg>
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`relative w-full cursor-pointer overflow-hidden rounded-2xl p-5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+        selected
+          ? 'text-white ring-1 ring-black/5 hover:ring-black/10 focus-visible:ring-[#3d6b5d]'
+          : 'border border-gray-100 bg-white text-gray-800 hover:border-gray-200 focus-visible:ring-[#1C3B35]/30'
+      }`}
+    >
+      {selected && (
+        <>
+          <div
+            className="absolute inset-0 bg-linear-to-br from-[#3d6b5d] via-[#5c8678] to-[#9fb1ac]"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-overlay"
+            style={{ backgroundImage: HIGHLIGHT_GRAIN }}
+            aria-hidden
+          />
+        </>
+      )}
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className={`mb-1 truncate text-xs md:text-sm lg:text-base  font-medium ${selected ? 'text-white/90' : 'text-gray-500'}`}>{label}</p>
+          <p className={`text-2xl md:text-3xl lg:text-4xl font-semibold leading-none tracking-tight ${selected ? 'text-white' : 'text-gray-800'}`}>{value}</p>
+          {sub && (
+            <p className={`mt-2 text-[10px] md:text-[12px] ${selected ? 'text-white/75' : 'text-gray-400'}`}>{sub}</p>
+          )}
+        </div>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-md">
+          <Icon className={`h-5 w-5 ${selected ? 'text-[#3d6b5d]' : 'text-[#1C3B35]'}`} strokeWidth={2} aria-hidden />
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className={`text-xs font-medium mb-0.5 truncate ${highlight ? 'text-white/70' : 'text-gray-500'}`}>{label}</p>
-        <p className={`text-2xl font-bold leading-none ${highlight ? 'text-white' : 'text-gray-800'}`}>{value}</p>
-        {sub && <p className={`text-[10px] mt-1 ${highlight ? 'text-white/50' : 'text-gray-400'}`}>{sub}</p>}
-      </div>
-    </div>
+    </button>
   );
 }
 
@@ -151,6 +198,7 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1);
   const [approving, setApproving] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
+  const [selectedStatKey, setSelectedStatKey] = useState<string>('Total Revenue');
   const router = useRouter();
 
   const showToast = (text: string, ok = true) => {
@@ -207,17 +255,17 @@ export default function AdminDashboard() {
   const pendingCount = stats?.pendingPayments ?? 0;
   const activeProfiles = stats?.activeProfiles ?? 0;
 
-  const row1 = [
-    { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, highlight: true, sub: 'Successful payments only' },
-    { label: 'Total Users', value: totalUsers.toLocaleString(), sub: 'Registered accounts' },
-    { label: 'Total Profiles', value: totalProfiles.toLocaleString(), sub: `${totalProfiles > 0 ? Math.round((activeProfiles / totalProfiles) * 100) : 0}% activation rate` },
-    { label: 'Pending Approvals', value: pendingCount, sub: pendingCount > 0 ? 'Needs your attention' : 'All clear!' },
+  const row1: StatCardItem[] = [
+    { label: 'Total Revenue', icon: CircleDollarSign, value: `$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: 'Successful payments only' },
+    { label: 'Total Users', icon: Users, value: totalUsers.toLocaleString(), sub: 'Registered accounts' },
+    { label: 'Total Profiles', icon: UserCircle, value: totalProfiles.toLocaleString(), sub: `${totalProfiles > 0 ? Math.round((activeProfiles / totalProfiles) * 100) : 0}% activation rate` },
+    { label: 'Pending Approvals', icon: ClipboardCheck, value: pendingCount, sub: pendingCount > 0 ? 'Needs your attention' : 'All clear!' },
   ];
-  const row2 = [
-    { label: 'Active Subscriptions', value: activeProfiles.toLocaleString(), sub: 'With active subscription' },
-    { label: 'Active Profiles', value: activeProfiles.toLocaleString(), sub: 'Visible to members' },
-    { label: 'Pending Payments', value: pendingCount, sub: 'Awaiting approval' },
-    { label: 'Total Registered', value: totalUsers.toLocaleString(), sub: 'All time' },
+  const row2: StatCardItem[] = [
+    { label: 'Active Subscriptions', icon: CreditCard, value: activeProfiles.toLocaleString(), sub: 'With active subscription' },
+    { label: 'Active Profiles', icon: UserCheck, value: activeProfiles.toLocaleString(), sub: 'Visible to members' },
+    { label: 'Pending Payments', icon: HandCoins, value: pendingCount, sub: 'Awaiting approval' },
+    { label: 'Total Registered', icon: UserPlus, value: totalUsers.toLocaleString(), sub: 'All time' },
   ];
 
   const quickActions = [
@@ -251,8 +299,8 @@ export default function AdminDashboard() {
       {/* Title */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
-          <p className="text-gray-400 text-sm mt-0.5">Monitor activity and manage the platform</p>
+          <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">Dashboard Overview</h1>
+          <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Monitor activity and manage the platform</p>
         </div>
         <button onClick={load}
           className="flex items-center gap-2 text-sm border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition font-semibold">
@@ -273,12 +321,26 @@ export default function AdminDashboard() {
 
       {/* ── Row 1 stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {row1.map(c => <StatCard key={c.label} {...c} />)}
+        {row1.map((c) => (
+          <StatCard
+            key={c.label}
+            item={c}
+            selected={selectedStatKey === c.label}
+            onSelect={() => setSelectedStatKey(c.label)}
+          />
+        ))}
       </div>
 
       {/* ── Row 2 stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {row2.map(c => <StatCard key={c.label} {...c} />)}
+        {row2.map((c) => (
+          <StatCard
+            key={c.label}
+            item={c}
+            selected={selectedStatKey === c.label}
+            onSelect={() => setSelectedStatKey(c.label)}
+          />
+        ))}
       </div>
 
       {/* ── Charts ── */}
@@ -287,8 +349,8 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-gray-800 text-sm">Registrations Over Time</h2>
-              <p className="text-xs text-gray-400 mt-0.5">User registrations by month</p>
+              <h2 className="font-medium font-poppins text-[#121514] subtitle">Registrations Over Time</h2>
+              <p className="text-xs md:text-sm lg:text-base text-gray-400 mt-0.5">User registrations by month</p>
             </div>
             <span className="text-xs bg-[#EAF2EE] text-[#1C3B35] px-3 py-1 rounded-full font-semibold">
               {totalUsers} total
@@ -303,8 +365,8 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-gray-800 text-sm">Revenue Overview</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Approved payment totals</p>
+              <h2 className="font-medium font-poppins text-[#121514] subtitle">Revenue Overview</h2>
+              <p className="text-xs md:text-sm lg:text-base text-gray-400 mt-0.5">Approved payment totals</p>
             </div>
             <span className="text-xs bg-[#EAF2EE] text-[#1C3B35] px-3 py-1 rounded-full font-semibold">
               ${totalRevenue.toFixed(2)}
@@ -323,12 +385,12 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Top Viewed Profiles */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Top Viewed Profiles</h2>
+          <h2 className="font-medium font-poppins text-[#121514] subtitle mb-4">Top Viewed Profiles</h2>
           {topViewed.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-300">
               <span className="text-3xl mb-2">👁</span>
-              <p className="text-sm text-gray-400">No profile views yet</p>
-              <p className="text-xs text-gray-300 mt-1">Views appear once members browse profiles</p>
+              <p className="text-xs md:text-sm lg:text-base text-gray-400">No profile views yet</p>
+              <p className="text-xs md:text-sm lg:text-base text-gray-300 mt-1">Views appear once members browse profiles</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -357,11 +419,11 @@ export default function AdminDashboard() {
 
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-800 text-sm mb-4">Quick Actions</h2>
+          <h2 className="font-medium font-poppins text-[#121514] subtitle mb-4">Quick Actions</h2>
           <div className="flex flex-col gap-2.5">
             {quickActions.map(qa => (
               <a key={qa.label} href={qa.href}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#EAF2EE] hover:bg-[#1C3B35] hover:text-white text-[#1C3B35] text-sm font-semibold transition-all duration-200 group">
+                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#EAF2EE] hover:bg-[#1C3B35] hover:text-white text-[#1C3B35] text-sm font-medium transition-all duration-200 group">
                 <div className="h-7 w-7 rounded-lg bg-[#1C3B35] group-hover:bg-white/20 flex items-center justify-center flex-shrink-0 text-sm">
                   {qa.icon}
                 </div>
@@ -384,8 +446,8 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-800">Pending Payment Approvals</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h2 className="font-medium font-poppins text-[#121514] subtitle">Pending Payment Approvals</h2>
+            <p className="text-xs md:text-sm lg:text-base text-gray-400 mt-0.5">
               {pendingPayments.length > 0
                 ? `${pendingPayments.length} payment${pendingPayments.length > 1 ? 's' : ''} awaiting approval`
                 : 'No pending payments — all clear!'}
@@ -400,7 +462,7 @@ export default function AdminDashboard() {
           {pendingPayments.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-400">
               <span className="text-3xl mb-2">✅</span>
-              <p className="text-sm">No pending payments — all clear!</p>
+              <p className="text-xs md:text-sm lg:text-base ">No pending payments — all clear!</p>
             </div>
           ) : (
             <table className="w-full text-sm">

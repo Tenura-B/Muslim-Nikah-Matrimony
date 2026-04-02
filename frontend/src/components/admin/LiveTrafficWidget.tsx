@@ -132,15 +132,15 @@ export default function LiveTrafficWidget() {
             </svg>
           </div>
           <div>
-            <h2 className="font-bold text-gray-800 text-sm">Live Site Traffic</h2>
-            <p className="text-[11px] text-gray-400">Real-time active visitors</p>
+            <h2 className="font-medium font-poppins text-[#121514] subtitle">Live Site Traffic</h2>
+            <p className="text-[11px] md:text-sm lg:text-base text-gray-400">Real-time active visitors</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {connected ? (
             <>
               <PulseDot color="#22C55E" />
-              <span className="text-[11px] font-semibold text-emerald-600">Live</span>
+              <span className="text-[11px] md:text-sm lg:text-base font-semibold text-emerald-600">Live</span>
             </>
           ) : (
             <>
