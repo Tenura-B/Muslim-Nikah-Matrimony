@@ -248,7 +248,7 @@ export default function ChatPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Messages</h1>
+          <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">Messages</h1>
           <div className="flex items-center gap-2 mt-0.5">
             <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
             <p className="text-gray-400 text-xs">{connected ? 'Connected — real-time' : 'Connecting…'}</p>

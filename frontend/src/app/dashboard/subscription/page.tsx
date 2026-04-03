@@ -79,8 +79,8 @@ export default function SubscriptionPage() {
   return (
     <div className="font-poppins max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Subscriptions</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage subscriptions for each profile independently</p>
+        <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">Subscriptions</h1>
+        <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Manage subscriptions for each profile independently</p>
       </div>
 
       {/* Toast */}

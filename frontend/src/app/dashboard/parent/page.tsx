@@ -2,24 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CircleDollarSign, HandCoins, UserCheck, Users } from 'lucide-react';
+import { AdminStatCard, type AdminStatCardItem } from '@/components/admin/AdminStatCard';
 import { profileApi, paymentApi } from '@/services/api';
-
-/* ── Stat Card (mirrors admin) ─────────────────────────────────────── */
-function StatCard({
-  label, value, highlight, icon,
-}: { label: string; value: string | number; highlight?: boolean; icon: React.ReactNode }) {
-  return (
-    <div className={`rounded-2xl p-5 flex items-center gap-4 ${highlight ? 'bg-[#1C3B35] text-white' : 'bg-white text-gray-800 border border-gray-100'}`}>
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${highlight ? 'bg-white/15' : 'bg-[#EAF2EE]'}`}>
-        <span className={highlight ? 'text-white' : 'text-[#1C3B35]'}>{icon}</span>
-      </div>
-      <div className="min-w-0">
-        <p className={`text-xs font-medium mb-0.5 truncate ${highlight ? 'text-white/70' : 'text-gray-500'}`}>{label}</p>
-        <p className={`text-2xl font-bold leading-none ${highlight ? 'text-white' : 'text-gray-800'}`}>{value}</p>
-      </div>
-    </div>
-  );
-}
 
 const statusBadge = (s: string) => {
   const map: Record<string, string> = {
@@ -45,6 +30,7 @@ export default function ParentDashboard() {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [selectedStatKey, setSelectedStatKey] = useState('Total Spend');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -62,6 +48,18 @@ export default function ParentDashboard() {
   const activeProfiles = profiles.filter((p) => p.status === 'ACTIVE').length;
   const pendingPayments = payments.filter((p) => p.status === 'PENDING').length;
   const totalSpend = payments.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
+
+  const statItems: AdminStatCardItem[] = [
+    {
+      label: 'Total Spend',
+      icon: CircleDollarSign,
+      value: `$${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      sub: 'From successful payments',
+    },
+    { label: 'Total Profiles', icon: Users, value: profiles.length, sub: 'Registered profiles' },
+    { label: 'Active Profiles', icon: UserCheck, value: activeProfiles, sub: 'Visible to members' },
+    { label: 'Pending Payments', icon: HandCoins, value: pendingPayments, sub: 'Awaiting confirmation' },
+  ];
 
   const quickActions = [
     { label: 'Browse Members', href: '/dashboard/members', icon: '🔍' },
@@ -101,51 +99,22 @@ export default function ParentDashboard() {
     <div className="font-poppins space-y-6">
       {/* Title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">
+        <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">
           Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! 👋
         </h1>
-        <p className="text-gray-400 text-sm mt-0.5">Here's what's happening with your account today</p>
+        <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Here's what's happening with your account today</p>
       </div>
 
-      {/* ── Stat Cards Row 1 ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Spend"
-          value={`$${totalSpend.toFixed(2)}`}
-          highlight
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-              <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Total Profiles"
-          value={profiles.length}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Active Profiles"
-          value={activeProfiles}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          }
-        />
-        <StatCard
-          label="Pending Payments"
-          value={pendingPayments}
-          icon={
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-            </svg>
-          }
-        />
+      {/* ── Stat cards (same as admin dashboard) ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {statItems.map((item) => (
+          <AdminStatCard
+            key={item.label}
+            item={item}
+            selected={selectedStatKey === item.label}
+            onSelect={() => setSelectedStatKey(item.label)}
+          />
+        ))}
       </div>
 
       {/* ── Recent Activity + Quick Actions ── */}
