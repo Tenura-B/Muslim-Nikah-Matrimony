@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { packagesApi } from "@/services/api";
+import { useCurrency } from "@/hooks/useCurrency";
 
 type Package = {
   id: string; name: string; description?: string; price: number;
@@ -63,6 +64,7 @@ export default function PricingCards() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [siteDiscount, setSiteDiscount] = useState<SiteDiscount>({ active: false, pct: 0, label: "" });
+  const { symbol, code, fmt } = useCurrency();
 
   useEffect(() => {
     packagesApi.getActive('SUBSCRIPTION')
@@ -157,7 +159,7 @@ export default function PricingCards() {
                 <div className="flex flex-col gap-0.5">
                   {hasDiscount && (
                     <span className="text-sm text-gray-400 line-through font-poppins">
-                      {plan.currency} {orig.toLocaleString()}
+                      {fmt(orig)}
                     </span>
                   )}
                   <div className="flex items-baseline gap-1">
@@ -165,11 +167,11 @@ export default function PricingCards() {
                       {hasDiscount ? final.toLocaleString() : plan.price.toLocaleString()}
                     </span>
                     <span className="font-poppins text-[15px] text-[#6B7280]">
-                      {plan.currency} / {plan.durationDays} days
+                      {symbol} / {plan.durationDays} days
                     </span>
                   </div>
                   {hasDiscount && (
-                    <span className="text-xs font-bold text-red-500">You save {Math.round(orig - final).toLocaleString()} {plan.currency}!</span>
+                    <span className="text-xs font-bold text-red-500">You save {fmt(Math.round(orig - final))}!</span>
                   )}
                 </div>
 

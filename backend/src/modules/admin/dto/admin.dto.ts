@@ -23,4 +23,5 @@ export class UpdateSiteSettingsDto {
   @IsOptional() @IsNumber() @Min(0) siteDiscountPct?: number;
   @IsOptional() @IsString() siteDiscountLabel?: string;
   @IsOptional() @IsBoolean() siteDiscountActive?: boolean;
+  @IsOptional() @IsString() platformCurrency?: string;
 }

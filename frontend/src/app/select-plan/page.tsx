@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { packagesApi, paymentApi, profileApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
 type Package = {
@@ -168,6 +169,7 @@ export default function SelectPlanPage() {
   const searchParams = useSearchParams();
   const preselectedProfileId = searchParams.get('profileId') ?? '';
   const fromCreateProfile = !!preselectedProfileId;
+  const { symbol, fmt } = useCurrency();
 
   const [plans, setPlans] = useState<Package[]>([]);
   const [selected, setSelected] = useState<Package | null>(null);
@@ -312,14 +314,11 @@ export default function SelectPlanPage() {
           </p>
         </div>
 
-        {/* Currency row */}
+        {/* Currency indicator */}
         <div className="flex items-center gap-4 mb-8">
           <label className="text-sm font-medium text-gray-600">Currency</label>
-          <div className="relative">
-            <select className="appearance-none border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm text-gray-700 bg-white shadow-sm focus:outline-none focus:border-[#1B6B4A]">
-              <option value="LKR">LKR</option>
-            </select>
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">▾</span>
+          <div className="border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-700 bg-white shadow-sm">
+            {symbol}
           </div>
         </div>
 
@@ -364,16 +363,16 @@ export default function SelectPlanPage() {
                         {hasDiscount ? (
                           <>
                             <p className="text-red-600 font-bold text-lg">
-                              Rs. {final.toLocaleString('en-LK', { minimumFractionDigits: 2 })}
+                              {fmt(final)}
                             </p>
                             <p className="text-gray-400 text-xs line-through">
-                              Rs. {orig.toLocaleString('en-LK', { minimumFractionDigits: 2 })}
+                              {fmt(orig)}
                             </p>
                             <p className="text-red-500 text-xs font-bold">SAVE {disc}%</p>
                           </>
                         ) : (
                           <p className="text-[#1B6B4A] font-bold text-lg">
-                            Rs. {plan.price.toLocaleString('en-LK', { minimumFractionDigits: 2 })}
+                            {fmt(plan.price)}
                           </p>
                         )}
                         <p className={`text-xs font-semibold mt-3 ${isSelected ? 'text-[#1B6B4A]' : 'text-[#DB9D30]'}`}>
@@ -417,19 +416,19 @@ export default function SelectPlanPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Package</span>
                   <span className="font-semibold text-[#1B6B4A]">
-                    {selected ? `Rs ${(selDisc > 0 ? selFinal : selected.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : 'Rs 0.00'}
+                    {selected ? fmt(selDisc > 0 ? selFinal : selected.price) : `${symbol} 0.00`}
                   </span>
                 </div>
                 {selDisc > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Savings ({selDisc}% off)</span>
-                    <span className="font-semibold text-red-500">-Rs {(selOrig - selFinal).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
+                    <span className="font-semibold text-red-500">-{fmt(selOrig - selFinal)}</span>
                   </div>
                 )}
                 <div className="border-t pt-3 flex justify-between text-sm font-bold">
                   <span>Total</span>
                   <span className="text-[#1B6B4A]">
-                    {selected ? `Rs ${(selDisc > 0 ? selFinal : selected.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : 'Rs 0.00'}
+                    {selected ? fmt(selDisc > 0 ? selFinal : selected.price) : `${symbol} 0.00`}
                   </span>
                 </div>
               </div>

@@ -1,12 +1,17 @@
-import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MinLength } from 'class-validator';
 
 class UpdateUserDto {
-  @IsOptional() @IsString()
-  phone?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() whatsappNumber?: string;
+}
+
+class ChangePasswordDto {
+  @IsString() currentPassword: string;
+  @IsString() @MinLength(8) newPassword: string;
 }
 
 @UseGuards(JwtAuthGuard)
@@ -22,5 +27,10 @@ export class UserController {
   @Put('me')
   updateMe(@CurrentUser() user: any, @Body() dto: UpdateUserDto) {
     return this.service.updateMe(user.userId, dto);
+  }
+
+  @Post('change-password')
+  changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
+    return this.service.changePassword(user.userId, dto.currentPassword, dto.newPassword);
   }
 }

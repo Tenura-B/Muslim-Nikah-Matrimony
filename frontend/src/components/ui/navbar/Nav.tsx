@@ -18,10 +18,19 @@ const Nav = () => {
     { name: 'Contact us', href: '/contact' },
   ]
 
-  // Read auth from localStorage on client
+  // Read auth from localStorage on client — re-run on pathname change AND on auth events
   useEffect(() => {
-    const stored = localStorage.getItem('mn_user')
-    if (stored) setUser(JSON.parse(stored))
+    const sync = () => {
+      const stored = localStorage.getItem('mn_user')
+      setUser(stored ? JSON.parse(stored) : null)
+    }
+    sync()                                                    // run on mount / pathname change
+    window.addEventListener('mn_auth_change', sync)          // fired by dashboard logout
+    window.addEventListener('storage', sync)                 // fired by other tabs
+    return () => {
+      window.removeEventListener('mn_auth_change', sync)
+      window.removeEventListener('storage', sync)
+    }
   }, [pathname])
 
   useEffect(() => { setMenuOpen(false) }, [pathname])

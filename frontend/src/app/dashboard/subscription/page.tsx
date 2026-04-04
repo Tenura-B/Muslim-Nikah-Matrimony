@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { subscriptionApi, paymentApi, packagesApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 type Profile = {
   id: string; name: string; memberId?: string;
@@ -21,6 +22,7 @@ export default function SubscriptionPage() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [initiating, setInitiating] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const { symbol, fmt } = useCurrency();
 
   // Bank transfer form state
   const [bankForm, setBankForm] = useState<{ profileId: string; ref: string } | null>(null);
@@ -99,7 +101,7 @@ export default function SubscriptionPage() {
           <p className="text-white/80 text-sm mt-1">{activePlan?.durationDays ? `${activePlan.durationDays}-day access` : '30-day access'} · Full profile visibility · Unlimited messaging</p>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold">${activePlan ? activePlan.price : '29.99'}</p>
+          <p className="text-3xl font-bold">{fmt(activePlan ? activePlan.price : 29.99)}</p>
           <p className="text-white/70 text-sm">per profile {activePlan?.durationDays ? `/ ${activePlan.durationDays} days` : '/ month'}</p>
         </div>
       </div>
@@ -180,7 +182,7 @@ export default function SubscriptionPage() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Amount</span>
-                            <span className="font-semibold text-gray-700">${pending.amount} {pending.currency}</span>
+                            <span className="font-semibold text-gray-700">{fmt(pending.amount)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-400">Method</span>
@@ -208,7 +210,7 @@ export default function SubscriptionPage() {
                           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
                             <p className="text-sm font-semibold text-blue-800">🏦 Bank Transfer Details</p>
                             <div className="bg-white rounded-lg border border-blue-100 p-3 text-xs space-y-1.5">
-                              <p className="text-gray-500">Transfer <span className="font-bold text-gray-800">${activePlan ? activePlan.price : '29.99'}</span> to:</p>
+                              <p className="text-gray-500">Transfer <span className="font-bold text-gray-800">{fmt(activePlan ? activePlan.price : 29.99)}</span> to:</p>
                               <p><span className="text-gray-400">Bank:</span> <span className="font-medium">Islamic Bank of Australia</span></p>
                               <p><span className="text-gray-400">BSB:</span> <span className="font-mono">062-000</span></p>
                               <p><span className="text-gray-400">Account:</span> <span className="font-mono">1234 5678</span></p>
@@ -247,7 +249,7 @@ export default function SubscriptionPage() {
                               className="flex-1 bg-[#1B6B4A] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#155a3d] transition disabled:opacity-50 flex items-center justify-center gap-2">
                               {initiating === profile.id
                                 ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                                : '💳'} Pay Online (${activePlan ? activePlan.price : '29.99'})
+                                : '💳'} Pay Online ({fmt(activePlan ? activePlan.price : 29.99)})
                             </button>
                             <button
                               onClick={() => setBankForm({ profileId: profile.id, ref: '' })}
@@ -292,7 +294,7 @@ export default function SubscriptionPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-gray-700">
-                      {p.method === 'BANK_TRANSFER' ? '🏦' : '💳'} ${p.amount} {p.currency}
+                      {p.method === 'BANK_TRANSFER' ? '🏦' : '💳'} {fmt(p.amount)}
                     </p>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                       p.status === 'SUCCESS' ? 'bg-green-100 text-green-700' :

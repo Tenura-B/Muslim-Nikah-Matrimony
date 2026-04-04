@@ -42,13 +42,33 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  forgotPassword: (email: string) =>
+    request<{ success: boolean; message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ success: boolean; message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    }),
+
+  validateResetToken: (token: string) =>
+    request<{ valid: boolean }>(`/auth/validate-reset-token?token=${encodeURIComponent(token)}`),
 };
 
 // ─── User ──────────────────────────────────────────────────────────────────
 export const userApi = {
   getMe: () => request<any>('/user/me'),
-  updateMe: (body: { phone?: string }) =>
+  updateMe: (body: { phone?: string; whatsappNumber?: string }) =>
     request<any>('/user/me', { method: 'PUT', body: JSON.stringify(body) }),
+  changePassword: (body: { currentPassword: string; newPassword: string }) =>
+    request<{ success: boolean; message: string }>('/user/change-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 // ─── Profiles ──────────────────────────────────────────────────────────────
@@ -153,7 +173,7 @@ export const adminApi = {
 
   // Site settings
   getSiteSettings: () => request<any>('/admin/settings'),
-  updateSiteSettings: (body: { siteDiscountPct?: number; siteDiscountLabel?: string; siteDiscountActive?: boolean }) =>
+  updateSiteSettings: (body: { siteDiscountPct?: number; siteDiscountLabel?: string; siteDiscountActive?: boolean; platformCurrency?: string }) =>
     request<any>('/admin/settings', { method: 'PUT', body: JSON.stringify(body) }),
 };
 

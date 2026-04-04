@@ -79,14 +79,23 @@ export default function ProfileDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ── Auth guard — redirect to login if not logged in ──
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('mn_token')) {
+      router.replace('/login');
+    }
+  }, [router]);
+
   useEffect(() => {
     if (!id) return;
+    if (typeof window !== 'undefined' && !localStorage.getItem('mn_token')) return;
     publicProfilesApi
       .getById(id)
       .then((r) => setProfile(r.data))
       .catch(() => setError('Profile not found or no longer active.'))
       .finally(() => setLoading(false));
   }, [id]);
+
 
   const handleChat = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('mn_token') : null;
