@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 import {
   CircleDollarSign,
   ClipboardCheck,
@@ -109,7 +110,7 @@ function LineChart({ data }: { data: ChartPoint[] }) {
         <g>
           <rect x={tip.x - 40} y={tip.y - 32} width={86} height={28} rx={5} fill="#1C3B35" />
           <text x={tip.x + 3} y={tip.y - 21} textAnchor="middle" fontSize={9} fill="white" fontWeight={600}>Revenue</text>
-          <text x={tip.x + 3} y={tip.y - 10} textAnchor="middle" fontSize={9} fill="#D4A843">${tip.val.toFixed(2)}</text>
+          <text x={tip.x + 3} y={tip.y - 10} textAnchor="middle" fontSize={9} fill="#D4A843">{tip.val.toFixed(2)}</text>
         </g>
       )}
     </svg>
@@ -146,6 +147,7 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
   const [selectedStatKey, setSelectedStatKey] = useState<string>('Total Revenue');
   const router = useRouter();
+  const { symbol, fmt } = useCurrency();
 
   const showToast = (text: string, ok = true) => {
     setToast({ text, ok });
@@ -202,7 +204,7 @@ export default function AdminDashboard() {
   const activeProfiles = stats?.activeProfiles ?? 0;
 
   const row1: AdminStatCardItem[] = [
-    { label: 'Total Revenue', icon: CircleDollarSign, value: `$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: 'Successful payments only' },
+    { label: 'Total Revenue', icon: CircleDollarSign, value: fmt(totalRevenue), sub: 'Successful payments only' },
     { label: 'Total Users', icon: Users, value: totalUsers.toLocaleString(), sub: 'Registered accounts' },
     { label: 'Total Profiles', icon: UserCircle, value: totalProfiles.toLocaleString(), sub: `${totalProfiles > 0 ? Math.round((activeProfiles / totalProfiles) * 100) : 0}% activation rate` },
     { label: 'Pending Approvals', icon: ClipboardCheck, value: pendingCount, sub: pendingCount > 0 ? 'Needs your attention' : 'All clear!' },
@@ -315,7 +317,7 @@ export default function AdminDashboard() {
               <p className="text-xs md:text-sm lg:text-base text-gray-400 mt-0.5">Approved payment totals</p>
             </div>
             <span className="text-xs bg-[#EAF2EE] text-[#1C3B35] px-3 py-1 rounded-full font-semibold">
-              ${totalRevenue.toFixed(2)}
+              {symbol}{totalRevenue.toFixed(2)}
             </span>
           </div>
           <div className="h-44">
@@ -430,7 +432,7 @@ export default function AdminDashboard() {
                       <p className="font-medium text-gray-800">{row.childProfile?.name ?? '—'}</p>
                       {row.childProfile?.memberId && <p className="text-xs text-gray-400">{row.childProfile.memberId}</p>}
                     </td>
-                    <td className="px-5 py-3.5 font-semibold text-gray-800">${row.amount} <span className="text-xs font-normal text-gray-400">{row.currency}</span></td>
+                    <td className="px-5 py-3.5 font-semibold text-gray-800">{fmt(row.amount)}</td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${row.method === 'BANK_TRANSFER' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
                         {row.method === 'BANK_TRANSFER' ? '🏦 Bank' : '💳 Online'}

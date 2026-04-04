@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CircleDollarSign, HandCoins, UserCheck, Users } from 'lucide-react';
 import { AdminStatCard, type AdminStatCardItem } from '@/components/admin/AdminStatCard';
 import { profileApi, paymentApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const statusBadge = (s: string) => {
   const map: Record<string, string> = {
@@ -31,6 +32,7 @@ export default function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [selectedStatKey, setSelectedStatKey] = useState('Total Spend');
+  const { fmt } = useCurrency();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -53,7 +55,7 @@ export default function ParentDashboard() {
     {
       label: 'Total Spend',
       icon: CircleDollarSign,
-      value: `$${totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: fmt(totalSpend),
       sub: 'From successful payments',
     },
     { label: 'Total Profiles', icon: Users, value: profiles.length, sub: 'Registered profiles' },
@@ -71,7 +73,7 @@ export default function ParentDashboard() {
   const recentActivity = [
     ...payments.slice(0, 3).map(p => ({
       dot: p.status === 'SUCCESS' ? '#10B981' : p.status === 'PENDING' ? '#F59E0B' : '#EF4444',
-      text: `Payment ${p.status.toLowerCase()} — $${p.amount} ${p.currency}`,
+      text: `Payment ${p.status.toLowerCase()} — ${fmt(p.amount)}`,
       time: new Date(p.createdAt).toLocaleString(),
       tag: p.status,
       tagColor: p.status === 'SUCCESS' ? 'bg-green-100 text-green-700' : p.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700',
@@ -291,7 +293,7 @@ export default function ParentDashboard() {
                 {payments.slice(0, 5).map((pay, i) => (
                   <tr key={pay.id} className={`hover:bg-gray-50 transition ${i % 2 === 1 ? 'bg-[#FAFAFA]' : ''}`}>
                     <td className="px-6 py-3.5 font-mono text-xs text-gray-400 select-all">{pay.id.slice(0, 14)}…</td>
-                    <td className="px-6 py-3.5 font-semibold text-gray-800">${pay.amount} <span className="text-xs font-normal text-gray-400">{pay.currency}</span></td>
+                    <td className="px-6 py-3.5 font-semibold text-gray-800">{fmt(pay.amount)}</td>
                     <td className="px-6 py-3.5">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${pay.method === 'BANK_TRANSFER' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
                         {pay.method === 'BANK_TRANSFER' ? '🏦 Bank' : '💳 Online'}

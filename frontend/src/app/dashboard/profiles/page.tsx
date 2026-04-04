@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { profileApi, paymentApi, packagesApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const STEPS = ['Personal', 'Location & Edu', 'Family', 'Preferences', 'Review'];
 
@@ -605,7 +606,7 @@ export default function ProfilesPage() {
                               </span>
                             )}
                             <p className="text-[9px] sm:text-[11px] font-bold text-[#8B5E00] font-poppins leading-tight">{plan.name}</p>
-                            <p className="text-[13px] sm:text-[16px] font-extrabold text-[#DB9D30] font-poppins mt-0.5 leading-tight">${plan.price}</p>
+                            <p className="text-[13px] sm:text-[16px] font-extrabold text-[#DB9D30] font-poppins mt-0.5 leading-tight">{plan.currency || 'Rs.'} {plan.price}</p>
                             <p className="hidden sm:block text-[9px] text-[#A07830] font-poppins mt-0.5 leading-tight">{plan.description || `Top listing for ${plan.durationDays} days`}</p>
                             <button
                               onClick={() => purchaseBoost(p.id, plan.durationDays)}

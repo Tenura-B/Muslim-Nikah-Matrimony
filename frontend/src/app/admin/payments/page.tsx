@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 type Payment = {
   id: string; amount: number; currency: string; method: string;
@@ -19,6 +20,7 @@ function ApproveModal({
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const { fmt } = useCurrency();
 
   const submit = async () => {
     setLoading(true); setErr('');
@@ -54,7 +56,7 @@ function ApproveModal({
               {payment.purpose === 'SUBSCRIPTION' && <span className="bg-[#1C3B35] text-white text-[10px] px-1.5 py-0.5 rounded font-bold">✓ SUBSCRIPTION</span>}
             </div>
           } />
-          <Row label="Amount" value={<span className="font-semibold text-gray-800">${payment.amount} {payment.currency}</span>} />
+          <Row label="Amount" value={<span className="font-semibold text-gray-800">{fmt(payment.amount)}</span>} />
           <Row label="Method" value={payment.method === 'BANK_TRANSFER' ? '🏦 Bank Transfer' : '💳 Online Gateway'} />
           {payment.bankRef && <Row label="Bank Ref" value={<span className="font-mono text-[#1C3B35] font-semibold">{payment.bankRef}</span>} />}
           <Row label="Submitted" value={new Date(payment.createdAt).toLocaleString()} />
@@ -116,23 +118,31 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 /* ── Main page ───────────────────────────────────────────────────────────── */
 export default function AdminPaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('PENDING');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Payment | null>(null);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
   const PER_PAGE = 10;
+  const { fmt } = useCurrency();
 
   const load = () => {
     setLoading(true);
-    adminApi.payments(filter === 'ALL' ? undefined : filter)
-      .then((r) => setPayments(r.data ?? []))
-      .catch(() => setPayments([]))
+    // Always load ALL payments so counts are accurate across all tabs
+    adminApi.payments(undefined)
+      .then((r) => setAllPayments(r.data ?? []))
+      .catch(() => setAllPayments([]))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); setPage(1); }, [filter]);
+  useEffect(() => { load(); }, []);
+  useEffect(() => { setPage(1); }, [filter]);
+
+  // Client-side filter for the active tab
+  const payments = filter === 'ALL'
+    ? allPayments
+    : allPayments.filter(p => p.status === filter);
 
   const handleDone = () => {
     setSelected(null);
@@ -150,7 +160,10 @@ export default function AdminPaymentsPage() {
     return map[s] ?? 'bg-gray-100 text-gray-600';
   };
 
-  const pendingCount = payments.filter(p => p.status === 'PENDING').length;
+  // Counts always from full dataset regardless of active tab
+  const pendingCount = allPayments.filter(p => p.status === 'PENDING').length;
+  const successCount = allPayments.filter(p => p.status === 'SUCCESS').length;
+  const failedCount  = allPayments.filter(p => p.status === 'FAILED').length;
   const totalPages = Math.ceil(payments.length / PER_PAGE);
   const pageData = payments.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -168,16 +181,15 @@ export default function AdminPaymentsPage() {
             <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Review payment IDs and approve subscriptions</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {STATUS_OPTIONS.filter(s => s !== 'ALL').map((s) => {
-              const count = s === 'PENDING' && filter !== 'PENDING'
-                ? undefined
-                : payments.filter(p => p.status === s).length;
-              return (
-                <span key={s} className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge(s)}`}>
-                  {count !== undefined ? `${count} ` : ''}{s.charAt(0) + s.slice(1).toLowerCase()}
-                </span>
-              );
-            })}
+            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('PENDING')}`}>
+              {pendingCount} Pending
+            </span>
+            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('SUCCESS')}`}>
+              {successCount} Success
+            </span>
+            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('FAILED')}`}>
+              {failedCount} Failed
+            </span>
           </div>
         </div>
 
@@ -206,21 +218,33 @@ export default function AdminPaymentsPage() {
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           {/* Filter tabs */}
           <div className="flex border-b border-gray-100 px-4 pt-4 gap-1">
-            {STATUS_OPTIONS.map((s) => (
-              <button key={s} onClick={() => setFilter(s)}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-all ${filter === s
-                  ? 'bg-[#1C3B35] text-white'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
-                {s.charAt(0) + s.slice(1).toLowerCase()}
-                {s !== 'ALL' && (
-                  <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${filter === s
-                    ? 'bg-white/20 text-white'
-                    : s === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {payments.filter(p => p.status === s).length}
-                  </span>
-                )}
-              </button>
-            ))}
+            {STATUS_OPTIONS.map((s) => {
+              const countMap: Record<string, number> = {
+                PENDING: pendingCount,
+                SUCCESS: successCount,
+                FAILED: failedCount,
+              };
+              const count = countMap[s];
+              const badgeColor = filter === s
+                ? 'bg-white/20 text-white'
+                : s === 'PENDING' ? 'bg-amber-100 text-amber-700'
+                : s === 'SUCCESS' ? 'bg-green-100 text-green-700'
+                : s === 'FAILED'  ? 'bg-red-100 text-red-700'
+                : 'bg-gray-100 text-gray-500';
+              return (
+                <button key={s} onClick={() => setFilter(s)}
+                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-all ${filter === s
+                    ? 'bg-[#1C3B35] text-white'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
+                  {s.charAt(0) + s.slice(1).toLowerCase()}
+                  {s !== 'ALL' && (
+                    <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${badgeColor}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Table */}
@@ -281,7 +305,7 @@ export default function AdminPaymentsPage() {
                         )}
                       </td>
                       <td className="px-5 py-3.5 font-semibold text-gray-800 whitespace-nowrap">
-                        ${p.amount} <span className="text-xs text-gray-400 font-normal">{p.currency}</span>
+                        {fmt(p.amount)}
                       </td>
                       <td className="px-5 py-3.5">
                         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${p.method === 'BANK_TRANSFER' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>

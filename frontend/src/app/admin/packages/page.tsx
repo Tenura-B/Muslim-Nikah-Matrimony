@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 
 /* ── Types ─────────────────────────────────────────── */
 type Package = {
@@ -59,6 +60,7 @@ export default function AdminPackagesPage() {
   const [savingSite, setSavingSite] = useState(false);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
   const [siteForm, setSiteForm] = useState<SiteSettings>(EMPTY_SITE);
+  const { symbol, fmt } = useCurrency();
 
   const showToast = (text: string, ok: boolean) => {
     setToast({ text, ok });
@@ -300,11 +302,11 @@ export default function AdminPackagesPage() {
                   <div className="flex items-end gap-1.5 mb-1">
                     {hasDiscount ? (
                       <>
-                        <span className="text-2xl font-bold text-red-600">{pkg.currency} {final.toLocaleString()}</span>
-                        <span className="text-sm text-gray-400 line-through mb-0.5">{orig.toLocaleString()}</span>
+                        <span className="text-2xl font-bold text-red-600">{fmt(final)}</span>
+                        <span className="text-sm text-gray-400 line-through mb-0.5">{fmt(orig)}</span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold text-[#1C3B35]">{pkg.currency} {pkg.price.toLocaleString()}</span>
+                      <span className="text-2xl font-bold text-[#1C3B35]">{fmt(pkg.price)}</span>
                     )}
                   </div>
 
@@ -448,8 +450,8 @@ export default function AdminPackagesPage() {
                 {form.discountPct && parseFloat(form.discountPct) > 0 && form.price && (
                   <div className="flex items-center gap-2 text-xs">
                     <span className="text-gray-500">Preview:</span>
-                    <span className="text-gray-400 line-through">{form.currency} {form.originalPrice || (parseFloat(form.price) / (1 - parseFloat(form.discountPct) / 100)).toFixed(2)}</span>
-                    <span className="text-red-600 font-bold">{form.currency} {parseFloat(form.price).toFixed(2)}</span>
+                    <span className="text-gray-400 line-through">{fmt(parseFloat(form.originalPrice || '0') || (parseFloat(form.price) / (1 - parseFloat(form.discountPct) / 100)))}</span>
+                    <span className="text-red-600 font-bold">{fmt(parseFloat(form.price))}</span>
                     <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">-{form.discountPct}%</span>
                   </div>
                 )}

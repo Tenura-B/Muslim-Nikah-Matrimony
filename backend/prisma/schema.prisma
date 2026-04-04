@@ -69,6 +69,7 @@ model User {
   childProfiles ChildProfile[]
   payments      Payment[]
   sentMessages  ChatMessage[]  @relation("SenderMessages")
+  passwordResetTokens PasswordResetToken[]
 }
 
 model ChildProfile {
@@ -238,5 +239,17 @@ model SiteSettings {
   siteDiscountPct     Float    @default(0)
   siteDiscountLabel   String   @default("")
   siteDiscountActive  Boolean  @default(false)
+  platformCurrency    String   @default("LKR")
   updatedAt           DateTime @updatedAt
+}
+
+/// Password reset tokens — one per request, expires in 1 hour
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

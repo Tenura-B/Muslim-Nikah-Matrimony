@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/services/api';
+import { useCurrency } from '@/hooks/useCurrency';
 import { AdminStatCard, type AdminStatCardItem } from '@/components/admin/AdminStatCard';
 import {
   CircleDollarSign,
@@ -69,6 +70,7 @@ export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]   = useState<string | null>(null);
   const [selectedStatKey, setSelectedStatKey] = useState('Total Revenue');
+  const { fmt } = useCurrency();
 
   const load = () => {
     setLoading(true);
@@ -115,7 +117,7 @@ export default function AdminAnalyticsPage() {
     {
       label: 'Total Revenue',
       icon: CircleDollarSign,
-      value: `$${totalRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: fmt(totalRev),
       sub: 'Successful payments only',
     },
     { label: 'Total Users', icon: Users, value: d.totalUsers ?? 0, sub: 'Registered accounts' },
@@ -312,7 +314,7 @@ export default function AdminAnalyticsPage() {
         <div className="flex-1 text-center sm:text-left">
           <p className="text-white/60 text-sm font-medium">Total Revenue Collected</p>
           <p className="text-4xl font-extrabold text-white mt-1">
-            ${totalRev.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {fmt(totalRev)}
           </p>
           <p className="text-white/40 text-xs mt-1">From approved payments only</p>
         </div>

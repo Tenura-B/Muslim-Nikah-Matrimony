@@ -269,7 +269,7 @@ export class AdminService {
     let settings = await this.prisma.siteSettings.findUnique({ where: { id: 'singleton' } });
     if (!settings) {
       settings = await this.prisma.siteSettings.create({
-        data: { id: 'singleton', siteDiscountPct: 0, siteDiscountLabel: '', siteDiscountActive: false },
+        data: { id: 'singleton', siteDiscountPct: 0, siteDiscountLabel: '', siteDiscountActive: false, platformCurrency: 'LKR' } as any,
       });
     }
     return { success: true, data: settings };
@@ -283,12 +283,14 @@ export class AdminService {
         siteDiscountPct: dto.siteDiscountPct ?? 0,
         siteDiscountLabel: dto.siteDiscountLabel ?? '',
         siteDiscountActive: dto.siteDiscountActive ?? false,
-      },
+        platformCurrency: dto.platformCurrency ?? 'LKR',
+      } as any,
       update: {
         ...(dto.siteDiscountPct !== undefined && { siteDiscountPct: dto.siteDiscountPct }),
         ...(dto.siteDiscountLabel !== undefined && { siteDiscountLabel: dto.siteDiscountLabel }),
         ...(dto.siteDiscountActive !== undefined && { siteDiscountActive: dto.siteDiscountActive }),
-      },
+        ...(dto.platformCurrency !== undefined && { platformCurrency: dto.platformCurrency }),
+      } as any,
     });
     return { success: true, data: settings };
   }
@@ -342,10 +344,12 @@ export class AdminService {
     const siteDiscPct = settings?.siteDiscountPct ?? 0;
     const siteActive = settings?.siteDiscountActive ?? false;
     const label = settings?.siteDiscountLabel ?? '';
+    const currency = (settings as any)?.platformCurrency ?? 'LKR';
     return {
       success: true,
       data: packages.map(p => this.applyDiscount(p, siteDiscPct, siteActive)),
       siteDiscount: { active: siteActive, pct: siteDiscPct, label },
+      currency,
     };
   }
 
