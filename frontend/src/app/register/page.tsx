@@ -142,6 +142,118 @@ function PasswordField({
   );
 }
 
+/* ─── Country Codes ─── */
+const COUNTRY_CODES = [
+  { flag: '🇱🇰', code: '+94',  name: 'Sri Lanka' },
+  { flag: '🇮🇳', code: '+91',  name: 'India' },
+  { flag: '🇵🇰', code: '+92',  name: 'Pakistan' },
+  { flag: '🇧🇩', code: '+880', name: 'Bangladesh' },
+  { flag: '🇲🇾', code: '+60',  name: 'Malaysia' },
+  { flag: '🇸🇦', code: '+966', name: 'Saudi Arabia' },
+  { flag: '🇦🇪', code: '+971', name: 'UAE' },
+  { flag: '🇶🇦', code: '+974', name: 'Qatar' },
+  { flag: '🇰🇼', code: '+965', name: 'Kuwait' },
+  { flag: '🇬🇧', code: '+44',  name: 'UK' },
+  { flag: '🇦🇺', code: '+61',  name: 'Australia' },
+  { flag: '🇨🇦', code: '+1',   name: 'Canada' },
+  { flag: '🇺🇸', code: '+1',   name: 'USA' },
+  { flag: '🇩🇪', code: '+49',  name: 'Germany' },
+  { flag: '🇫🇷', code: '+33',  name: 'France' },
+  { flag: '🇮🇩', code: '+62',  name: 'Indonesia' },
+  { flag: '🇸🇬', code: '+65',  name: 'Singapore' },
+  { flag: '🇿🇦', code: '+27',  name: 'South Africa' },
+  { flag: '🇳🇬', code: '+234', name: 'Nigeria' },
+  { flag: '🇪🇬', code: '+20',  name: 'Egypt' },
+  { flag: '🇹🇷', code: '+90',  name: 'Turkey' },
+  { flag: '🇮🇷', code: '+98',  name: 'Iran' },
+  { flag: '🇲🇻', code: '+960', name: 'Maldives' },
+  { flag: '🇳🇵', code: '+977', name: 'Nepal' },
+  { flag: '🇴🇲', code: '+968', name: 'Oman' },
+  { flag: '🇧🇭', code: '+973', name: 'Bahrain' },
+];
+
+function PhoneField({
+  label, name, value, onChange, error, optional,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (fullNumber: string, fieldName: string) => void;
+  error?: string;
+  optional?: boolean;
+}) {
+  // Parse existing value for dial code
+  const detectDialCode = (val: string) => {
+    const sorted = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+    for (const c of sorted) {
+      if (val.startsWith(c.code)) return c.code;
+    }
+    return '+94';
+  };
+  const [dialCode, setDialCode] = useState(() => detectDialCode(value || ''));
+  const [localNum, setLocalNum] = useState(() => {
+    const dc = detectDialCode(value || '');
+    return (value || '').replace(dc, '').trimStart();
+  });
+
+  const handleDialChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newCode = e.target.value;
+    setDialCode(newCode);
+    onChange(localNum ? `${newCode}${localNum}` : '', name);
+  };
+
+  const handleNumChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    setLocalNum(raw);
+    onChange(raw ? `${dialCode}${raw}` : '', name);
+  };
+
+  const selected = COUNTRY_CODES.find(c => c.code === dialCode) ?? COUNTRY_CODES[0];
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-gray-600">
+        {label}{!optional && <span className="text-red-400"> *</span>}{optional && <span className="text-gray-400 text-xs ml-1">(optional)</span>}
+      </label>
+      <div className={`flex rounded-lg border bg-white shadow-sm overflow-hidden transition focus-within:border-[#1B6B4A] focus-within:ring-2 focus-within:ring-[#1B6B4A]/20 ${
+        error ? 'border-red-400 bg-red-50/30' : 'border-gray-200'
+      }`}>
+        {/* Country code selector */}
+        <div className="relative flex-shrink-0">
+          <select
+            value={dialCode}
+            onChange={handleDialChange}
+            className="h-full appearance-none bg-gray-50 border-r border-gray-200 pl-2 pr-6 text-sm text-gray-700 outline-none cursor-pointer hover:bg-gray-100 transition"
+            style={{ minWidth: '80px' }}
+          >
+            {COUNTRY_CODES.map((c, i) => (
+              <option key={i} value={c.code}>
+                {c.flag} {c.code}
+              </option>
+            ))}
+          </select>
+          <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 text-[10px]">▼</span>
+          {/* Visible label inside the box */}
+          <span className="pointer-events-none absolute inset-0 flex items-center pl-2 text-sm text-gray-700 bg-gray-50 border-r border-gray-200">
+            {selected.flag} {selected.code}
+            <ChevronDown className="ml-1 h-3 w-3 text-gray-400" />
+          </span>
+        </div>
+        {/* Number input */}
+        <input
+          type="tel"
+          name={name}
+          value={localNum}
+          placeholder="xxx xxx xxxx"
+          onChange={handleNumChange}
+          className="flex-1 bg-white px-3 py-2.5 text-sm text-gray-700 outline-none"
+        />
+      </div>
+      {error && <p className="text-xs text-red-500 flex items-center gap-1"><span>⚠</span>{error}</p>}
+    </div>
+  );
+}
+
 function DateField({
   label,
   name,
@@ -240,10 +352,11 @@ function Step1({
 }
 
 function Step2({
-  data, onChange, fieldErrors,
+  data, onChange, onPhoneChange, fieldErrors,
 }: {
   data: Record<string, string>;
   onChange: (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => void;
+  onPhoneChange: (fullNumber: string, fieldName: string) => void;
   fieldErrors?: Record<string, string>;
 }) {
   return (
@@ -252,8 +365,8 @@ function Step2({
       <p className="mt-1 text-sm text-gray-500">Set up your login credentials</p>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField label="Email Address" name="email" type="email" placeholder="Enter your email" value={data.email || ""} onChange={onChange} error={fieldErrors?.email} />
-        <TextField label="Phone Number" name="phone" type="tel" placeholder="+94 xxx xxx xxx" value={data.phone || ""} onChange={onChange} error={fieldErrors?.phone} />
-        <TextField label="WhatsApp Number" name="whatsappNumber" type="tel" placeholder="+94 xxx xxx xxx" value={data.whatsappNumber || ""} onChange={onChange} error={fieldErrors?.whatsappNumber} />
+        <PhoneField label="Phone Number" name="phone" value={data.phone || ""} onChange={onPhoneChange} error={fieldErrors?.phone} />
+        <PhoneField label="WhatsApp Number" name="whatsappNumber" value={data.whatsappNumber || ""} onChange={onPhoneChange} error={fieldErrors?.whatsappNumber} />
         <PasswordField label="Password" name="password" placeholder="Create a password" value={data.password || ""} onChange={onChange} error={fieldErrors?.password} />
         <PasswordField label="Confirm Password" name="confirmPassword" placeholder="Confirm your password" value={data.confirmPassword || ""} onChange={onChange} error={fieldErrors?.confirmPassword} />
       </div>
@@ -376,35 +489,7 @@ function Step5({ data, onChange, lookingFor, setLookingFor, agreedTerms, setAgre
         />
       </div>
 
-      <div className="mt-5">
-        <label className="text-sm font-medium text-gray-600 block mb-2">I Am Looking For</label>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setLookingFor("Male")}
-            className={`flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
-              lookingFor === "Male"
-                ? "border-[#1B6B4A] bg-[#1B6B4A]/10 text-[#1B6B4A]"
-                : "border-gray-200 text-gray-500 hover:border-[#1B6B4A]/40"
-            }`}
-          >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-            Male
-          </button>
-          <button
-            type="button"
-            onClick={() => setLookingFor("Female")}
-            className={`flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 ${
-              lookingFor === "Female"
-                ? "border-[#1B6B4A] bg-[#1B6B4A]/10 text-[#1B6B4A]"
-                : "border-gray-200 text-gray-500 hover:border-[#1B6B4A]/40"
-            }`}
-          >
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-            Female
-          </button>
-        </div>
-      </div>
+
 
       <label className="mt-5 flex items-center gap-2 cursor-pointer">
         <input
@@ -444,8 +529,13 @@ export default function RegisterPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear the specific field error as the user corrects it
     setFieldErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
+  };
+
+  // Handler for PhoneField — receives (fullNumber, fieldName)
+  const handlePhoneChange = (fullNumber: string, fieldName: string) => {
+    setFormData((prev) => ({ ...prev, [fieldName]: fullNumber }));
+    setFieldErrors((prev) => { const n = { ...prev }; delete n[fieldName]; return n; });
   };
 
   const [checking, setChecking] = useState(false);
@@ -754,7 +844,7 @@ export default function RegisterPage() {
           {/* Form Content */}
           <div className="flex-1 px-5 py-6 md:px-8 md:py-8">
             <div className="flex-1">
-              {currentStep === 1 && <Step2 data={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
+              {currentStep === 1 && <Step2 data={formData} onChange={handleChange} onPhoneChange={handlePhoneChange} fieldErrors={fieldErrors} />}
               {currentStep === 2 && <Step1 data={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
               {currentStep === 3 && <Step3 data={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
               {currentStep === 4 && <Step4 data={formData} onChange={handleChange} fieldErrors={fieldErrors} />}
