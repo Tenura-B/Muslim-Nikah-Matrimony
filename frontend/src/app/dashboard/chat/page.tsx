@@ -11,11 +11,15 @@ type Message = {
 type Conversation = { id: string; name: string; lastMsg?: string };
 
 // Broadcast total unread count to the rest of the app (e.g. nav badge)
+// NOTE: dispatchEvent is synchronous so we defer it to the next tick to avoid
+// updating DashboardLayout state while ChatPage is still in React's render/commit cycle.
 function broadcastUnread(counts: Record<string, number>) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   if (typeof window !== 'undefined') {
     localStorage.setItem('mn_unread', String(total));
-    window.dispatchEvent(new CustomEvent('mn_unread_change', { detail: total }));
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('mn_unread_change', { detail: total }));
+    }, 0);
   }
 }
 
@@ -59,6 +63,27 @@ export default function ChatPage() {
   // Keep ref in sync so socket handlers always have the latest selected chat
   useEffect(() => { selectedChatRef.current = selectedChat; }, [selectedChat]);
 
+  // Broadcast unread count to rest of app AFTER state is committed (not during render)
+  useEffect(() => {
+    broadcastUnread(unreadCounts);
+  }, [unreadCounts]);
+
+  // ── Poll authoritative unread counts from DB every 6s ──────────────
+  useEffect(() => {
+    if (!selectedMyProfile) return;
+    const fetchUnread = () => {
+      chatApi.unreadCounts(selectedMyProfile).then((r: any) => {
+        const counts: Record<string, number> = r ?? {};
+        // Zero out the currently-open conversation (those are being read)
+        if (selectedChatRef.current) counts[selectedChatRef.current] = 0;
+        setUnreadCounts(counts);
+      }).catch(() => {});
+    };
+    fetchUnread(); // run immediately on profile select
+    const interval = setInterval(fetchUnread, 6000);
+    return () => clearInterval(interval);
+  }, [selectedMyProfile]);
+
   // URL params
   const [startId, setStartId] = useState<string | null>(null);
   const [startName, setStartName] = useState<string | null>(null);
@@ -99,10 +124,12 @@ export default function ChatPage() {
     loadConversations(selectedMyProfile);
   }, [selectedMyProfile, loadConversations]);
 
-  // Load history
+  // Load history — always replace with sorted server data
   const loadHistory = useCallback((myId: string, otherId: string) => {
     chatApi.history(myId, otherId).then(r => {
-      setMessages(r.data ?? []);
+      const incoming: Message[] = r.data ?? [];
+      const sorted = [...incoming].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      setMessages(sorted);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     });
   }, []);
@@ -111,13 +138,28 @@ export default function ChatPage() {
     if (selectedMyProfile && selectedChat) loadHistory(selectedMyProfile, selectedChat);
   }, [selectedMyProfile, selectedChat, loadHistory]);
 
-  // Mark messages as read when conversation opens
+  // ── Polling fallback — sync new incoming messages every 4s ─────────
   useEffect(() => {
-    if (!selectedChat || !selectedMyProfile || !socketRef.current?.connected) return;
-    socketRef.current.emit('mark_read', {
-      myProfileId: selectedMyProfile,
-      otherProfileId: selectedChat,
-    });
+    if (!selectedMyProfile || !selectedChat) return;
+    const interval = setInterval(() => {
+      loadHistory(selectedMyProfile, selectedChat);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selectedMyProfile, selectedChat, loadHistory]);
+
+  // Mark messages as read when conversation opens or changes
+  // Uses a small delay to ensure socket is connected first
+  useEffect(() => {
+    if (!selectedChat || !selectedMyProfile) return;
+    // REST call to persist readAt in DB immediately (works even if socket isn't ready)
+    chatApi.markRead(selectedMyProfile, selectedChat).catch(() => {});
+    // Also emit via socket so the other party gets the blue tick in real-time
+    const timer = setTimeout(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: selectedChat });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
   }, [selectedChat, selectedMyProfile]);
 
   // ── Socket.IO ──────────────────────────────────────────────────────
@@ -155,19 +197,22 @@ export default function ChatPage() {
             const exists = list.some(c => c.id === msg.senderProfileId);
             return exists ? list : [{ id: msg.senderProfileId, name: 'New Message' }, ...list];
           });
-          // If it's NOT the open conversation, increment unread count
-          if (msg.senderProfileId !== selectedChatRef.current) {
-            setUnreadCounts(prev => {
-              const next = { ...prev, [msg.senderProfileId]: (prev[msg.senderProfileId] ?? 0) + 1 };
-              broadcastUnread(next);
-              return next;
-            });
-          } else if (socket.connected) {
-            socket.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: msg.senderProfileId });
+          // If it's the open conversation — mark as read immediately (socket + REST)
+          if (msg.senderProfileId === selectedChatRef.current) {
+            if (socket.connected) {
+              socket.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: msg.senderProfileId });
+            }
+            chatApi.markRead(selectedMyProfile, msg.senderProfileId).catch(() => {});
+          } else {
+            // Not open conversation — increment unread
+            setUnreadCounts(prev => ({
+              ...prev,
+              [msg.senderProfileId]: (prev[msg.senderProfileId] ?? 0) + 1,
+            }));
           }
         }
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-        return [...prev, msg];
+        return [...prev, msg].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       });
     });
 
@@ -217,7 +262,7 @@ export default function ChatPage() {
         if (result?.data) {
           setMessages(prev => {
             if (prev.some(m => m.id === result.data.id)) return prev;
-            return [...prev, result.data];
+            return [...prev, result.data].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           });
           setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
         }
@@ -232,14 +277,14 @@ export default function ChatPage() {
           createdAt: new Date().toISOString(),
           readAt: null,
         };
-        setMessages(prev => [...prev, optimistic]);
+        setMessages(prev => [...prev, optimistic].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
 
         // Emit via socket — server will save and echo new_message (real ID)
         socket.emit('send_message', { senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
 
         // After a short delay, reload history to replace temp message with real one
-        setTimeout(() => loadHistory(selectedMyProfile, selectedChat), 800);
+        setTimeout(() => loadHistory(selectedMyProfile, selectedChat), 300);
       } else {
         // Fallback: REST
         const result = await chatApi.send({ senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });

@@ -132,4 +132,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   pushMessage(receiverProfileId: string, message: any) {
     this.server.to(`profile:${receiverProfileId}`).emit('new_message', message);
   }
+
+  /* ── Helper called by REST controller to push blue ticks ────────── */
+  emitMessagesRead(senderProfileId: string, byProfileId: string, messageIds: string[]) {
+    this.server.to(`profile:${senderProfileId}`).emit('messages_read', {
+      byProfileId,
+      messageIds,
+      readAt: new Date().toISOString(),
+    });
+    this.logger.log(`messages_read (REST) emitted to profile:${senderProfileId} — ${messageIds.length} messages`);
+  }
 }

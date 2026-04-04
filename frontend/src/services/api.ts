@@ -126,6 +126,10 @@ export const chatApi = {
     request<any>(`/chat/history/${myProfileId}/${otherProfileId}`),
   conversations: (profileId: string) =>
     request<any>(`/chat/conversations/${profileId}`),
+  markRead: (myProfileId: string, otherProfileId: string) =>
+    request<any>('/chat/mark-read', { method: 'POST', body: JSON.stringify({ myProfileId, otherProfileId }) }),
+  unreadCounts: (profileId: string) =>
+    request<any>(`/chat/unread/${profileId}`),
 };
 
 // ─── Admin ─────────────────────────────────────────────────────────────────
