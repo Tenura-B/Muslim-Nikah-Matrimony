@@ -208,6 +208,7 @@ model ChatMessage {
   receiverProfile  ChildProfile @relation("ProfileReceivedMessages", fields: [receiverProfileId], references: [id], onDelete: Cascade)
 
   content          String
+  imageUrl         String?   // base64 data URL or hosted image URL
   readAt           DateTime?
 
   createdAt        DateTime     @default(now())

@@ -6,7 +6,7 @@ import { getSocket, disconnectSocket } from '@/services/socket';
 
 type Message = {
   id: string; senderProfileId: string; receiverProfileId: string;
-  content: string; createdAt: string; readAt?: string | null;
+  content: string; imageUrl?: string | null; createdAt: string; readAt?: string | null;
 };
 type Conversation = { id: string; name: string; lastMsg?: string };
 
@@ -43,6 +43,7 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMsg, setNewMsg] = useState('');
+  const [imageFile, setImageFile] = useState<string | null>(null); // base64 preview
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
@@ -53,6 +54,7 @@ export default function ChatPage() {
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const selectedChatRef = useRef('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Keep ref in sync so socket handlers always have the latest selected chat
   useEffect(() => { selectedChatRef.current = selectedChat; }, [selectedChat]);
@@ -135,14 +137,25 @@ export default function ChatPage() {
 
     socket.on('new_message', (msg: Message) => {
       setMessages(prev => {
+        // If we already have this exact message ID, skip it
         if (prev.some(m => m.id === msg.id)) return prev;
+
+        // Replace any optimistic temp message from the same sender with the real one
+        const hasTempFromMe = msg.senderProfileId === selectedMyProfile &&
+          prev.some(m => m.id.startsWith('temp_'));
+        if (hasTempFromMe) {
+          const filtered = prev.filter(m => !m.id.startsWith('temp_'));
+          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+          return [...filtered, msg];
+        }
+
         // Message from someone else
         if (msg.senderProfileId !== selectedMyProfile) {
           setConversations(list => {
             const exists = list.some(c => c.id === msg.senderProfileId);
             return exists ? list : [{ id: msg.senderProfileId, name: 'New Message' }, ...list];
           });
-          // If it's NOT the open conversation, increment unread count + play sound notification
+          // If it's NOT the open conversation, increment unread count
           if (msg.senderProfileId !== selectedChatRef.current) {
             setUnreadCounts(prev => {
               const next = { ...prev, [msg.senderProfileId]: (prev[msg.senderProfileId] ?? 0) + 1 };
@@ -150,13 +163,11 @@ export default function ChatPage() {
               return next;
             });
           } else if (socket.connected) {
-            // It IS the open conversation — mark as read immediately
             socket.emit('mark_read', { myProfileId: selectedMyProfile, otherProfileId: msg.senderProfileId });
           }
         }
-        const updated = [...prev, msg];
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-        return updated;
+        return [...prev, msg];
       });
     });
 
@@ -186,22 +197,82 @@ export default function ChatPage() {
 
   // ── Send message ──────────────────────────────────────────────────
   const send = async () => {
-    if (!newMsg.trim() || !selectedChat || sending) return;
-    const content = newMsg.trim();
+    if ((!newMsg.trim() && !imageFile) || !selectedChat || sending) return;
+    const content = newMsg.trim() || '📷 Image';
+    const imgUrl = imageFile ?? undefined;
     setNewMsg('');
+    setImageFile(null);
     setSending(true);
     const socket = socketRef.current;
-    if (socket?.connected) {
-      socket.emit('send_message', { senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
+
+    try {
+      if (imgUrl) {
+        // Always use REST for image messages — WebSocket payloads have size limits
+        const result = await chatApi.send({
+          senderProfileId: selectedMyProfile,
+          receiverProfileId: selectedChat,
+          content,
+          imageUrl: imgUrl,
+        });
+        if (result?.data) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === result.data.id)) return prev;
+            return [...prev, result.data];
+          });
+          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        }
+      } else if (socket?.connected) {
+        // Optimistic insert — show message immediately without waiting for server echo
+        const tempId = `temp_${Date.now()}`;
+        const optimistic: Message = {
+          id: tempId,
+          senderProfileId: selectedMyProfile,
+          receiverProfileId: selectedChat,
+          content,
+          createdAt: new Date().toISOString(),
+          readAt: null,
+        };
+        setMessages(prev => [...prev, optimistic]);
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
+        // Emit via socket — server will save and echo new_message (real ID)
+        socket.emit('send_message', { senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
+
+        // After a short delay, reload history to replace temp message with real one
+        setTimeout(() => loadHistory(selectedMyProfile, selectedChat), 800);
+      } else {
+        // Fallback: REST
+        const result = await chatApi.send({ senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
+        if (result?.data) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === result.data.id)) return prev;
+            return [...prev, result.data];
+          });
+          setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        }
+      }
+    } catch (e: any) {
+      console.error('Send failed:', e);
+      alert(`Failed to send: ${e.message}`);
+    } finally {
       setSending(false);
-    } else {
-      try {
-        await chatApi.send({ senderProfileId: selectedMyProfile, receiverProfileId: selectedChat, content });
-        loadHistory(selectedMyProfile, selectedChat);
-      } catch (e: any) { alert(e.message); }
-      finally { setSending(false); }
     }
     loadConversations(selectedMyProfile);
+  };
+
+  // ── Pick image ────────────────────────────────────────────────────
+  const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image is too large. Please choose an image under 5 MB.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setImageFile(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = ''; // reset so same file can be picked again
   };
 
   // ── Typing indicator ──────────────────────────────────────────────
@@ -396,7 +467,19 @@ export default function ChatPage() {
                           </div>
                         )}
                         <div className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${isMine ? 'bg-[#1C3B35] text-white rounded-br-md' : 'bg-white text-gray-800 rounded-bl-md border border-gray-100'}`}>
-                          <p className="leading-relaxed break-words">{m.content}</p>
+                          {/* Image attachment */}
+                          {m.imageUrl && (
+                            <a href={m.imageUrl} target="_blank" rel="noreferrer" className="block mb-2">
+                              <img
+                                src={m.imageUrl}
+                                alt="attachment"
+                                className="max-w-[220px] max-h-[200px] rounded-xl object-cover border border-white/20 cursor-pointer hover:opacity-90 transition"
+                              />
+                            </a>
+                          )}
+                          {m.content && m.content !== '📷 Image' && (
+                            <p className="leading-relaxed break-words">{m.content}</p>
+                          )}
                           <div className={`flex items-center justify-end gap-0.5 mt-1 ${isMine ? 'text-white/60' : 'text-gray-400'}`}>
                             <span className="text-xs">
                               {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -430,21 +513,60 @@ export default function ChatPage() {
               </div>
 
               {/* Input */}
-              <div className="px-4 py-3 border-t border-gray-100 bg-white flex gap-2 items-end">
-                <input
-                  value={newMsg}
-                  onChange={e => handleTyping(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
-                  placeholder={`Message ${selectedConvName}…`}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white"
-                />
-                <button onClick={send} disabled={sending || !newMsg.trim()}
-                  className="bg-[#1C3B35] text-white p-2.5 rounded-xl hover:bg-[#15302a] transition disabled:opacity-50 flex-shrink-0">
-                  {sending
-                    ? <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
-                    : <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
-                  }
-                </button>
+              <div className="border-t border-gray-100 bg-white">
+                {/* Image preview strip */}
+                {imageFile && (
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-0">
+                    <div className="relative inline-block">
+                      <img src={imageFile} alt="preview" className="h-16 w-16 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                      <button
+                        type="button"
+                        onClick={() => setImageFile(null)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center text-[10px] hover:bg-red-500 transition shadow"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <span className="text-xs text-gray-400">Image ready to send</span>
+                  </div>
+                )}
+                <div className="px-4 py-3 flex gap-2 items-end">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={pickImage}
+                  />
+                  {/* Image attach button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach image"
+                    className="flex-shrink-0 p-2.5 rounded-xl text-gray-400 hover:text-[#1C3B35] hover:bg-gray-100 transition border border-gray-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                  </button>
+                  <input
+                    value={newMsg}
+                    onChange={e => handleTyping(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
+                    placeholder={`Message ${selectedConvName}…`}
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white"
+                  />
+                  <button onClick={send} disabled={sending || (!newMsg.trim() && !imageFile)}
+                    className="bg-[#1C3B35] text-white p-2.5 rounded-xl hover:bg-[#15302a] transition disabled:opacity-50 flex-shrink-0">
+                    {sending
+                      ? <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                      : <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                    }
+                  </button>
+                </div>
               </div>
             </>
           )}

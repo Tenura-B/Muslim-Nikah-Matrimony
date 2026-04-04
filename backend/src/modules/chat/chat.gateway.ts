@@ -66,7 +66,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send_message')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { senderProfileId: string; receiverProfileId: string; content: string },
+    @MessageBody() data: { senderProfileId: string; receiverProfileId: string; content: string; imageUrl?: string },
   ) {
     try {
       const userId = client.data.userId;
@@ -74,6 +74,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         senderProfileId: data.senderProfileId,
         receiverProfileId: data.receiverProfileId,
         content: data.content,
+        imageUrl: data.imageUrl,
       });
 
       const message = result.data;

@@ -19,6 +19,7 @@ export type ProfileCardProps = {
     isVip?: boolean;
     onChatClick?: (e: React.MouseEvent) => void;
     onViewClick?: (e: React.MouseEvent) => void;
+    hideFooter?: boolean;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -136,6 +137,7 @@ const GenuineProfileCard = ({
     isVip,
     onChatClick,
     onViewClick,
+    hideFooter,
 }: ProfileCardProps) => {
     return (
         <div className="relative bg-white rounded-[20px] shadow-[0_4px_24px_rgba(0,0,0,0.10)] w-full flex-shrink-0 overflow-hidden pb-5">
@@ -229,23 +231,27 @@ const GenuineProfileCard = ({
                     <InfoRow label="Job:" value={job} />
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-dashed border-gray-700 mt-2 mb-3" />
+                {!hideFooter && (
+                    <>
+                        {/* Divider */}
+                        <div className="border-t border-dashed border-gray-700 mt-2 mb-3" />
 
-                {/* Joined date */}
-                <p className="text-center text-[11px] lg:text-[13px] xl:text-[15px] 2xl:text-[17px] text-[#010806A1]/80 font-poppins mb-3">
-                    Joined {joinedDaysAgo} days ago
-                </p>
+                        {/* Joined date */}
+                        <p className="text-center text-[11px] lg:text-[13px] xl:text-[15px] 2xl:text-[17px] text-[#010806A1]/80 font-poppins mb-3">
+                            Joined {joinedDaysAgo} days ago
+                        </p>
 
-                {/* CTA Buttons */}
-                <div className="flex gap-2 w-full">
-                    <button onClick={onViewClick} className="flex-1 bg-white hover:bg-gray-50 border border-gray-200 text-[#1C3B35] transition-all duration-150 text-[12px] sm:text-[13px] lg:text-[14px] font-medium font-poppins py-2 rounded-xl shadow-sm">
-                        View
-                    </button>
-                    <button onClick={onChatClick} className="flex-[1.5] bg-[#1B6B4A] hover:bg-[#155a3d] active:scale-[0.98] transition-all duration-150 text-white text-[12px] sm:text-[13px] lg:text-[14px] font-medium font-poppins py-2 rounded-xl shadow-sm flex items-center justify-center gap-1">
-                        <span className="text-xs sm:text-sm">💬</span> Chat
-                    </button>
-                </div>
+                        {/* CTA Buttons */}
+                        <div className="flex gap-2 w-full">
+                            <button onClick={onViewClick} className="flex-1 bg-white hover:bg-gray-50 border border-gray-200 text-[#1C3B35] transition-all duration-150 text-[12px] sm:text-[13px] lg:text-[14px] font-medium font-poppins py-2 rounded-xl shadow-sm">
+                                View
+                            </button>
+                            <button onClick={onChatClick} className="flex-[1.5] bg-[#1B6B4A] hover:bg-[#155a3d] active:scale-[0.98] transition-all duration-150 text-white text-[12px] sm:text-[13px] lg:text-[14px] font-medium font-poppins py-2 rounded-xl shadow-sm flex items-center justify-center gap-1">
+                                <span className="text-xs sm:text-sm">💬</span> Chat
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -273,12 +279,7 @@ const SkeletonCard = () => (
                     </div>
                 ))}
             </div>
-            <div className="border-t border-dashed border-gray-200 mt-2 mb-3" />
-            <div className="h-3 w-24 bg-gray-100 rounded mx-auto mb-3" />
-            <div className="flex gap-2">
-                <div className="flex-1 h-9 bg-gray-100 rounded-xl" />
-                <div className="flex-[1.5] h-9 bg-gray-200 rounded-xl" />
-            </div>
+
         </div>
     </div>
 );
@@ -332,6 +333,7 @@ const GenuineProfileCards = () => {
                     {...profile}
                     onChatClick={handleChatClick}
                     onViewClick={handleViewClick}
+                    hideFooter
                 />
             ))}
         </div>

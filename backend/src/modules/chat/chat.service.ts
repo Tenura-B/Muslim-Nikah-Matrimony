@@ -1,6 +1,5 @@
 import { Injectable, ForbiddenException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RuleEngineService } from '../rule-engine/rule-engine.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SendMessageDto } from './dto/chat.dto';
 
@@ -10,7 +9,6 @@ export class ChatService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ruleEngine: RuleEngineService,
     private readonly events: EventEmitter2,
   ) {}
 
@@ -35,24 +33,14 @@ export class ChatService {
       throw new ForbiddenException({ success: false, message: 'Sender profile is not active', error_code: 'PROFILE_INACTIVE' });
     }
 
-    // Chat is allowed IF:
-    // 1. canViewProfile passes (gender/age/subscription rules)
-    // 2. Chat is ALWAYS enabled if canViewContact == false (fallback system)
-    const ctx = { viewer: senderProfile as any, target: receiverProfile as any };
-    const profileCheck = this.ruleEngine.canViewProfile(ctx);
-
-    if (!profileCheck.allowed) {
-      throw new ForbiddenException({
-        success: false,
-        message: `Cannot chat: ${profileCheck.reason}`,
-        error_code: 'CHAT_NOT_ALLOWED',
-      });
+    // Sender must have an ACTIVE subscription
+    if (senderProfile.subscription?.status !== 'ACTIVE') {
+      throw new ForbiddenException({ success: false, message: 'You need an active subscription to send messages', error_code: 'NO_SUBSCRIPTION' });
     }
 
-    // log whether chat is contact-fallback mode
-    const contactCheck = this.ruleEngine.canViewContact(ctx);
-    if (!contactCheck.allowed) {
-      this.logger.log(`Chat FALLBACK mode (contact hidden): sender=${dto.senderProfileId} → receiver=${dto.receiverProfileId}`);
+    // Receiver must be ACTIVE
+    if (receiverProfile.status !== 'ACTIVE') {
+      throw new ForbiddenException({ success: false, message: 'Receiver profile is not active', error_code: 'RECEIVER_INACTIVE' });
     }
 
     const message = await this.prisma.chatMessage.create({
@@ -61,6 +49,7 @@ export class ChatService {
         senderProfileId: dto.senderProfileId,
         receiverProfileId: dto.receiverProfileId,
         content: dto.content,
+        imageUrl: dto.imageUrl,
       },
     });
 

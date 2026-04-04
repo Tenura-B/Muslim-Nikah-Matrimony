@@ -120,7 +120,7 @@ export const visibilityApi = {
 
 // ─── Chat ──────────────────────────────────────────────────────────────────
 export const chatApi = {
-  send: (body: { senderProfileId: string; receiverProfileId: string; content: string }) =>
+  send: (body: { senderProfileId: string; receiverProfileId: string; content: string; imageUrl?: string }) =>
     request<any>('/chat/send', { method: 'POST', body: JSON.stringify(body) }),
   history: (myProfileId: string, otherProfileId: string) =>
     request<any>(`/chat/history/${myProfileId}/${otherProfileId}`),
