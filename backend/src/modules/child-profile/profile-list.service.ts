@@ -64,7 +64,7 @@ export class ProfileListService {
     const profile = await this.prisma.childProfile.update({
       where: { id: profileId },
       data: { viewCount: { increment: 1 } } as any,
-      include: { subscription: true },
+      include: { subscription: true, user: true },
     }).catch(() => null);
 
     if (!profile || profile.status !== 'ACTIVE') {
@@ -75,6 +75,7 @@ export class ProfileListService {
     const isVip = !!(profile.boostExpiresAt && new Date(profile.boostExpiresAt as any) > new Date());
     const displayName = !profile.showRealName && (profile as any).nickname ? (profile as any).nickname : profile.name;
     const p = profile as any;
+    const u = p.user ?? {};
 
     return {
       success: true,
@@ -110,7 +111,14 @@ export class ProfileListService {
         isVip,
         boostExpiresAt: p.boostExpiresAt,
         createdAt: p.createdAt,
-        _meta: { nameIsNickname: !p.showRealName },
+        // Phone / WhatsApp — only exposed if the owner has not hidden them
+        phone: u.phoneVisible !== false ? (u.phone ?? null) : null,
+        whatsappNumber: u.whatsappVisible !== false ? (u.whatsappNumber ?? null) : null,
+        _meta: {
+          nameIsNickname: !p.showRealName,
+          phoneVisible: u.phoneVisible !== false,
+          whatsappVisible: u.whatsappVisible !== false,
+        },
       },
     };
   }

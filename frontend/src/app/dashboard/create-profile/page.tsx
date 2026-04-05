@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { profileApi } from '@/services/api';
 
-// ── Constants matching registration flow ─────────────────────────────────────
-const STEPS = ['Personal', 'Location & Edu', 'Family', 'Preferences', 'Review'];
+// ── Steps (mirrors registration Steps 2–5) ────────────────────────────────────
+const STEPS = ['Personal Details', 'Location & Education', 'Family Details', 'Additional Details', 'Review'];
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
 const COUNTRIES = ['Sri Lanka','United Kingdom','Australia','Canada','UAE','Saudi Arabia','Qatar','USA','Malaysia','Other'];
+const LOOKING_COUNTRIES = ['Any Country','Sri Lanka','United Kingdom','Australia','Canada','UAE','Saudi Arabia','Qatar','USA','Malaysia','Other'];
 const ETHNICITIES = ['Arab','South Asian','African','South East Asian','European','Other'];
 const OCCUPATIONS_GENERAL = ['Employed','Self Employed','Business Owner','Student','Not Employed'];
 const FATHER_OCCUPATIONS = ['Business','Government Employee','Private Sector','Retired','Not Employed','Deceased'];
@@ -24,9 +24,18 @@ const FAMILY_STATUSES = ['Upper Class','Upper Middle Class','Middle Class','Lowe
 const CIVIL_STATUSES = ['Never Married','Widowed','Divorced','Separated','Other'];
 const CHILDREN_OPTS = ['No','Yes - 1','Yes - 2','Yes - 3','Yes - 3+'];
 const CREATED_BY_OPTS = ['Self','Parent','Guardian','Sibling'];
+const HEIGHT_OPTS = ["4'0\"","4'5\"","4'10\"","5'0\"","5'2\"","5'4\"","5'6\"","5'8\"","5'10\"","6'0\"","6'2\"","6'4\"","6'6\""];
+
+// Height string → cm (same as registration)
+const HEIGHT_TO_CM: Record<string, number> = {
+  "4'0\"": 122, "4'5\"": 135, "4'10\"": 147,
+  "5'0\"": 152, "5'2\"": 157, "5'4\"": 163,
+  "5'6\"": 168, "5'8\"": 173, "5'10\"": 178,
+  "6'0\"": 183, "6'2\"": 188, "6'4\"": 193, "6'6\"": 198,
+};
 
 // ── Shared field components ───────────────────────────────────────────────────
-const sel = (err?: string) =>
+const inputCls = (err?: string) =>
   `w-full border rounded-xl px-3.5 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white ${err ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`;
 
 function Field({ label, name, value, onChange, type = 'text', placeholder = '', required = false, error, optional = false }: any) {
@@ -37,23 +46,36 @@ function Field({ label, name, value, onChange, type = 'text', placeholder = '', 
         {optional && <span className="text-gray-400 font-normal"> (optional)</span>}
       </label>
       <input type={type} name={name} value={value ?? ''} onChange={onChange} placeholder={placeholder}
-        className={sel(error)} />
+        className={inputCls(error)} />
       {error && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span>⚠</span>{error}</p>}
     </div>
   );
 }
 
-function Select({ label, name, value, onChange, options, required = false, error, placeholder = 'Select' }: {
+function Textarea({ label, name, value, onChange, placeholder = '', rows = 4, optional = false }: any) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+        {label} {optional && <span className="text-gray-400 font-normal"> (optional)</span>}
+      </label>
+      <textarea name={name} value={value ?? ''} onChange={onChange} rows={rows} placeholder={placeholder}
+        className={`${inputCls()} resize-none`} />
+    </div>
+  );
+}
+
+function Select({ label, name, value, onChange, options, required = false, error, placeholder = 'Select', optional = false }: {
   label: string; name: string; value: string; onChange: any;
   options: (string | { value: string; label: string })[];
-  required?: boolean; error?: string; placeholder?: string;
+  required?: boolean; error?: string; placeholder?: string; optional?: boolean;
 }) {
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
         {label} {required && <span className="text-red-400">*</span>}
+        {optional && <span className="text-gray-400 font-normal"> (optional)</span>}
       </label>
-      <select name={name} value={value ?? ''} onChange={onChange} className={sel(error)}>
+      <select name={name} value={value ?? ''} onChange={onChange} className={inputCls(error)}>
         <option value="">{placeholder}</option>
         {options.map((o) => {
           const v = typeof o === 'string' ? o : o.value;
@@ -75,7 +97,7 @@ function DobPicker({ day, month, year, onChange, error }: {
   const years = Array.from({ length: maxYear - 1939 }, (_, i) => maxYear - i);
   const daysInMonth = month && year ? new Date(Number(year), Number(month), 0).getDate() : 31;
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const s = sel(error);
+  const s = inputCls(error);
   return (
     <div className="col-span-2">
       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
@@ -105,9 +127,55 @@ const STEP_ICONS = [
   <svg key="p" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>,
   <svg key="l" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
   <svg key="f" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
-  <svg key="h" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+  <svg key="a" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
   <svg key="c" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
 ];
+
+// ── Auto-generate bio/expectations (mirrors registration logic) ───────────────
+function generateBio(form: any): { about: string; expectations: string } {
+  const firstName = form.firstName || '';
+  const gender = form.gender === 'FEMALE' ? 'Female' : 'Male';
+  const pronoun = gender === 'Female' ? 'She' : 'He';
+  const pronoun2 = gender === 'Female' ? 'her' : 'his';
+  const city = form.city || '';
+  const country = form.country || '';
+  const location = [city, country].filter(Boolean).join(', ');
+  const education = form.education || '';
+  const occupation = form.occupation || '';
+  const profession = form.profession || '';
+  const ethnicity = form.ethnicity || '';
+  const civilStatus = form.civilStatus || '';
+  const children = form.children || '';
+  const familyStatus = form.familyStatus || '';
+  const dressCode = form.dressCode || '';
+
+  const aboutParts: string[] = [];
+  if (firstName) aboutParts.push(`${firstName} is a sincere and practising Muslim${ethnicity ? ` of ${ethnicity} background` : ''}`);
+  if (location) aboutParts.push(`currently living in ${location}`);
+  if (occupation && profession) aboutParts.push(`working as a ${profession} (${occupation})`);
+  else if (occupation) aboutParts.push(`currently ${occupation.toLowerCase()}`);
+  if (education) aboutParts.push(`holding a ${education}`);
+  if (familyStatus) aboutParts.push(`${pronoun} comes from a ${familyStatus.toLowerCase()} family`);
+  if (dressCode) aboutParts.push(`and follows a ${dressCode.toLowerCase()} dress code`);
+  if (civilStatus && civilStatus !== 'Never Married') aboutParts.push(`${pronoun} is ${civilStatus.toLowerCase()}`);
+  if (children && children !== 'No') {
+    const num = children.replace('Yes - ', '');
+    aboutParts.push(`with ${num} ${parseInt(num) === 1 ? 'child' : 'children'}`);
+  }
+
+  const about = aboutParts.length > 0
+    ? aboutParts.join(', ').replace(/,\s*$/, '') + `. ${pronoun} is looking for a life partner who shares ${pronoun2} values and commitment to Islam.`
+    : '';
+
+  const countryPref = form.countryPreference && form.countryPreference !== 'Any Country' ? form.countryPreference : '';
+  const expParts: string[] = [];
+  expParts.push(`Looking for a ${gender === 'Female' ? 'righteous, caring and responsible' : 'pious, educated and family-oriented'} Muslim partner`);
+  if (countryPref) expParts.push(`preferably from ${countryPref}`);
+  expParts.push('who values family, is kind-hearted and ready for a serious commitment');
+  expParts.push('The ideal match should be respectful, honest and practising in their faith');
+
+  return { about, expectations: expParts.join('. ') + '.' };
+}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CreateProfilePage() {
@@ -126,8 +194,9 @@ export default function CreateProfilePage() {
     fatherEthnicity: '', fatherCountry: '', fatherOccupation: '', fatherCity: '',
     motherEthnicity: '', motherCountry: '', motherOccupation: '', motherCity: '',
     brothers: '', sisters: '',
-    // Preferences
-    minAgePreference: '', maxAgePreference: '', countryPreference: '', minHeightPreference: '',
+    // Additional Details
+    countryPreference: '',
+    about: '', expectations: '',
   });
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -152,18 +221,7 @@ export default function CreateProfilePage() {
     setFieldErrors(prev => { const n = { ...prev }; delete n.dateOfBirth; return n; });
   };
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  const calcAge = (dob: string): number | null => {
-    if (!dob) return null;
-    const birth = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age;
-  };
-
-  // ── Validation matching registration flow ──────────────────────────────────
+  // ── Validation per step ────────────────────────────────────────────────────
   const validateStep = (s: number): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (s === 0) {
@@ -178,12 +236,7 @@ export default function CreateProfilePage() {
         const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 16);
         if (birth > cutoff) errs.dateOfBirth = 'You must be at least 16 years old.';
       }
-      if (!form.height) {
-        errs.height = 'Please enter a height.';
-      } else {
-        const h = parseInt(form.height, 10);
-        if (isNaN(h) || h < 100 || h > 250) errs.height = 'Height must be between 100 and 250 cm.';
-      }
+      if (!form.height) errs.height = 'Please select a height.';
       if (!form.appearance) errs.appearance = 'Please select an appearance.';
       if (!form.complexion) errs.complexion = 'Please select a complexion.';
       if (!form.ethnicity) errs.ethnicity = 'Please select an ethnicity.';
@@ -210,39 +263,6 @@ export default function CreateProfilePage() {
       if (!form.motherOccupation) errs.motherOccupation = "Please select mother's occupation.";
       if (!form.motherCity?.trim()) errs.motherCity = "Mother's city is required.";
     }
-    if (s === 3) {
-      const minA = form.minAgePreference ? Number(form.minAgePreference) : null;
-      const maxA = form.maxAgePreference ? Number(form.maxAgePreference) : null;
-      const minH = form.minHeightPreference ? Number(form.minHeightPreference) : null;
-      const personAge = calcAge(form.dateOfBirth);
-      const personHeight = form.height ? parseInt(form.height, 10) : null;
-      const isFemale = form.gender === 'FEMALE';
-      const isMale   = form.gender === 'MALE';
-
-      // Age range sanity
-      if (minA !== null && minA < 16) errs.minAgePreference = 'Minimum age must be at least 16.';
-      if (maxA !== null && maxA < 16) errs.maxAgePreference = 'Maximum age must be at least 16.';
-      if (maxA !== null && minA !== null && maxA <= minA) errs.maxAgePreference = 'Max age must be greater than min age.';
-
-      // Gender-based age rules
-      if (isFemale && personAge !== null) {
-        if (minA !== null && minA < personAge) errs.minAgePreference = `Female preference: age must be ≥ your age (${personAge}).`;
-        if (maxA !== null && maxA < personAge) errs.maxAgePreference = `Female preference: age must be ≥ your age (${personAge}).`;
-      }
-      if (isMale && personAge !== null) {
-        if (minA !== null && minA > personAge) errs.minAgePreference = `Male preference: age must be ≤ your age (${personAge}).`;
-        if (maxA !== null && maxA > personAge) errs.maxAgePreference = `Male preference: age must be ≤ your age (${personAge}).`;
-      }
-
-      // Height range sanity
-      if (minH !== null && (minH < 100 || minH > 250)) errs.minHeightPreference = 'Height must be between 100–250 cm.';
-
-      // Gender-based height rules
-      if (isFemale && personHeight !== null && minH !== null && minH < personHeight)
-        errs.minHeightPreference = `Female preference: must be ≥ your height (${personHeight} cm).`;
-      if (isMale && personHeight !== null && minH !== null && minH > personHeight)
-        errs.minHeightPreference = `Male preference: must be ≤ your height (${personHeight} cm).`;
-    }
     return errs;
   };
 
@@ -250,60 +270,68 @@ export default function CreateProfilePage() {
     const errs = validateStep(step);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
-    setStep(s => s + 1);
+
+    const nextStep = step + 1;
+
+    // Auto-generate bio when entering Additional Details (step 3)
+    if (nextStep === 3) {
+      const { about, expectations } = generateBio(form);
+      setForm((f: any) => ({
+        ...f,
+        about: f.about?.trim() ? f.about : about,
+        expectations: f.expectations?.trim() ? f.expectations : expectations,
+      }));
+    }
+
+    setStep(nextStep);
   };
 
   const handleCreate = async () => {
-    // Run all validations
-    const allErrs = { ...validateStep(0), ...validateStep(1), ...validateStep(2), ...validateStep(3) };
+    const allErrs = { ...validateStep(0), ...validateStep(1), ...validateStep(2) };
     if (Object.keys(allErrs).length > 0) {
       setFieldErrors(allErrs);
       if (Object.keys(validateStep(0)).length > 0) setStep(0);
       else if (Object.keys(validateStep(1)).length > 0) setStep(1);
-      else if (Object.keys(validateStep(2)).length > 0) setStep(2);
-      else setStep(3);
+      else setStep(2);
       return;
     }
     setSaving(true); setApiError('');
     try {
-      const toInt = (v: any) => { const n = parseInt(v, 10); return isNaN(n) ? undefined : n; };
-      // Only send fields the backend DTO accepts
+      const heightCm = form.height ? (HEIGHT_TO_CM[form.height] ?? undefined) : undefined;
       const payload: Record<string, any> = {
-        name:                `${form.firstName.trim()} ${form.lastName.trim()}`,
-        gender:              form.gender,        // already 'MALE'/'FEMALE'
-        dateOfBirth:         form.dateOfBirth,
-        height:              form.height ? toInt(form.height) : undefined,
-        appearance:          form.appearance     || undefined,
-        complexion:          form.complexion     || undefined,
-        ethnicity:           form.ethnicity      || undefined,
-        dressCode:           form.dressCode      || undefined,
-        civilStatus:         form.civilStatus    || undefined,
-        children:            form.children       || undefined,
-        country:             form.country        || undefined,
-        state:               form.state          || undefined,
-        city:                form.city           || undefined,
-        residencyStatus:     form.residencyStatus|| undefined,
-        education:           form.education      || undefined,
-        fieldOfStudy:        form.fieldOfStudy   || undefined,
-        occupation:          form.occupation     || undefined,
-        profession:          form.profession     || undefined,
-        familyStatus:        form.familyStatus   || undefined,
-        createdBy:           form.createdBy      || undefined,
-        fatherEthnicity:     form.fatherEthnicity|| undefined,
-        fatherCountry:       form.fatherCountry  || undefined,
-        fatherOccupation:    form.fatherOccupation|| undefined,
-        fatherCity:          form.fatherCity     || undefined,
-        motherEthnicity:     form.motherEthnicity|| undefined,
-        motherCountry:       form.motherCountry  || undefined,
-        motherOccupation:    form.motherOccupation|| undefined,
-        motherCity:          form.motherCity     || undefined,
-        siblings:            (parseInt(form.brothers||'0') + parseInt(form.sisters||'0')) || undefined,
-        minAgePreference:    form.minAgePreference ? toInt(form.minAgePreference) : undefined,
-        maxAgePreference:    form.maxAgePreference ? toInt(form.maxAgePreference) : undefined,
-        minHeightPreference: form.minHeightPreference ? toInt(form.minHeightPreference) : undefined,
-        countryPreference:   form.countryPreference || undefined,
+        name:               `${form.firstName.trim()} ${form.lastName.trim()}`,
+        gender:             form.gender,
+        dateOfBirth:        form.dateOfBirth,
+        height:             heightCm,
+        appearance:         form.appearance     || undefined,
+        complexion:         form.complexion     || undefined,
+        ethnicity:          form.ethnicity      || undefined,
+        dressCode:          form.dressCode      || undefined,
+        civilStatus:        form.civilStatus    || undefined,
+        children:           form.children       || undefined,
+        country:            form.country        || undefined,
+        state:              form.state          || undefined,
+        city:               form.city           || undefined,
+        residencyStatus:    form.residencyStatus|| undefined,
+        education:          form.education      || undefined,
+        fieldOfStudy:       form.fieldOfStudy   || undefined,
+        occupation:         form.occupation     || undefined,
+        profession:         form.profession     || undefined,
+        familyStatus:       form.familyStatus   || undefined,
+        createdBy:          form.createdBy      || undefined,
+        fatherEthnicity:    form.fatherEthnicity|| undefined,
+        fatherCountry:      form.fatherCountry  || undefined,
+        fatherOccupation:   form.fatherOccupation|| undefined,
+        fatherCity:         form.fatherCity     || undefined,
+        motherEthnicity:    form.motherEthnicity|| undefined,
+        motherCountry:      form.motherCountry  || undefined,
+        motherOccupation:   form.motherOccupation|| undefined,
+        motherCity:         form.motherCity     || undefined,
+        siblings:           (parseInt(form.brothers||'0') + parseInt(form.sisters||'0')) || undefined,
+        countryPreference:  (form.countryPreference && form.countryPreference !== 'Any Country') ? form.countryPreference : undefined,
+        aboutUs:            form.about         || undefined,
+        expectations:       form.expectations  || undefined,
       };
-      // Strip undefined
       Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
       const res = await profileApi.create(payload);
       const newId = res?.data?.id ?? res?.id ?? '';
@@ -314,6 +342,13 @@ export default function CreateProfilePage() {
   };
 
   const g2 = 'grid grid-cols-2 gap-4';
+  const stepDesc = [
+    'Fill in personal details',
+    'Where are you based?',
+    'About your family',
+    'Tell us more about yourself',
+    'Review before creating',
+  ];
 
   return (
     <div className="min-h-screen bg-[#F5F7F5] font-poppins">
@@ -365,9 +400,7 @@ export default function CreateProfilePage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="bg-[#F0F4F2] border-b border-gray-100 px-6 py-4">
             <h2 className="font-bold text-[#1C3B35] text-base">{STEPS[step]}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {['Fill in personal details','Where are you based?','About your family','What are you looking for?','Review before creating'][step]}
-            </p>
+            <p className="text-xs text-gray-500 mt-0.5">{stepDesc[step]}</p>
           </div>
 
           <div className="px-6 py-6 space-y-4">
@@ -376,23 +409,21 @@ export default function CreateProfilePage() {
             {step === 0 && (
               <>
                 <div className={g2}>
-                  <Field label="First Name" name="firstName" value={form.firstName} onChange={handleField} placeholder="e.g. Ahmed" required error={fieldErrors.firstName} />
-                  <Field label="Last Name" name="lastName" value={form.lastName} onChange={handleField} placeholder="e.g. Hassan" required error={fieldErrors.lastName} />
+                  <Field label="First Name" name="firstName" value={form.firstName} onChange={handleField} placeholder="Enter your first name" required error={fieldErrors.firstName} />
+                  <Field label="Last Name" name="lastName" value={form.lastName} onChange={handleField} placeholder="Enter your last name" required error={fieldErrors.lastName} />
                 </div>
                 <div className={g2}>
                   <Select label="Created By" name="createdBy" value={form.createdBy} onChange={handleField} options={CREATED_BY_OPTS} required error={fieldErrors.createdBy} />
                   <Select label="Gender" name="gender" value={form.gender} onChange={handleField}
-                    options={[
-                      { value: 'MALE', label: 'Male' },
-                      { value: 'FEMALE', label: 'Female' },
-                    ]}
+                    options={[{ value: 'MALE', label: 'Male' }, { value: 'FEMALE', label: 'Female' }]}
                     required error={fieldErrors.gender} />
                 </div>
                 <div className="grid grid-cols-1">
                   <DobPicker day={form.dob_day} month={form.dob_month} year={form.dob_year} onChange={handleDob} error={fieldErrors.dateOfBirth} />
                 </div>
                 <div className={g2}>
-                  <Field label="Height (cm)" name="height" value={form.height} onChange={handleField} type="number" placeholder="e.g. 170" error={fieldErrors.height} />
+                  <Select label="Height" name="height" value={form.height} onChange={handleField}
+                    options={HEIGHT_OPTS} required error={fieldErrors.height} placeholder="Select Height" />
                   <Select label="Appearance" name="appearance" value={form.appearance} onChange={handleField} options={APPEARANCES} required error={fieldErrors.appearance} />
                 </div>
                 <div className={g2}>
@@ -467,61 +498,49 @@ export default function CreateProfilePage() {
               </>
             )}
 
-            {/* ── Step 3: Preferences (gender-aware) ───────────────────── */}
-            {step === 3 && (() => {
-              const personAge = calcAge(form.dateOfBirth);
-              const personHeight = form.height ? parseInt(form.height, 10) : null;
-              const isFemale = form.gender === 'FEMALE';
-              const isMale   = form.gender === 'MALE';
-              const ageMin  = isFemale && personAge ? personAge : 16;
-              const ageMax  = isMale   && personAge ? personAge : undefined;
-              const hMin    = isFemale && personHeight ? personHeight : 100;
-              const hMax    = isMale   && personHeight ? personHeight : 250;
-              return (
-                <>
-                  {/* Gender hint */}
-                  <div className={`text-xs rounded-xl px-4 py-3 border ${
-                    isFemale ? 'bg-pink-50 border-pink-100 text-pink-700' : 'bg-blue-50 border-blue-100 text-blue-700'
-                  }`}>
-                    {isFemale ? (
-                      <>
-                        <span className="font-bold">🌸 Female preferences:</span><br/>
-                        • Age preference must be <strong>≥ your age ({personAge ?? '?'})</strong> — you prefer someone older or same age.<br/>
-                        • Min Height must be <strong>≥ your height ({personHeight ? `${personHeight} cm` : '?'})</strong> — you prefer someone taller or same height.
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-bold">🔵 Male preferences:</span><br/>
-                        • Age preference must be <strong>≤ your age ({personAge ?? '?'})</strong> — you prefer someone younger or same age.<br/>
-                        • Min Height must be <strong>≤ your height ({personHeight ? `${personHeight} cm` : '?'})</strong> — you prefer someone shorter or same height.
-                      </>
-                    )}
-                  </div>
+            {/* ── Step 3: Additional Details ────────────────────────────── */}
+            {step === 3 && (
+              <>
+                <div className="p-3 bg-[#F0F4F2] rounded-xl text-xs text-[#1C3B35] font-medium flex items-start gap-2">
+                  <span>✨</span>
+                  <span>We've auto-generated your bio and expectations based on your details. Feel free to edit them.</span>
+                </div>
 
-                  <div className={g2}>
-                    <Field label="Min Age Preference" name="minAgePreference" value={form.minAgePreference}
-                      onChange={handleField} type="number"
-                      placeholder={isFemale ? `≥ ${personAge ?? 16}` : `≤ ${personAge ?? ''}`}
-                      error={fieldErrors.minAgePreference} optional />
-                    <Field label="Max Age Preference" name="maxAgePreference" value={form.maxAgePreference}
-                      onChange={handleField} type="number"
-                      placeholder={isFemale ? `≥ ${personAge ?? 16}` : `≤ ${personAge ?? ''}`}
-                      error={fieldErrors.maxAgePreference} optional />
-                  </div>
-                  <Field label="Country Preference" name="countryPreference" value={form.countryPreference}
-                    onChange={handleField} placeholder="Any country" optional />
-                  <Field label="Min Height Preference (cm)" name="minHeightPreference" value={form.minHeightPreference}
-                    onChange={handleField} type="number"
-                    placeholder={isFemale ? `≥ ${personHeight ?? 160} cm` : `≤ ${personHeight ?? 180} cm`}
-                    error={fieldErrors.minHeightPreference} optional />
-                  <p className="text-xs text-gray-400">
-                    {isFemale
-                      ? `Valid range — Age: ≥${ageMin} | Height: ${hMin}–250 cm`
-                      : `Valid range — Age: 16–${ageMax ?? '?'} | Height: 100–${hMax} cm`}
-                  </p>
-                </>
-              );
-            })()}
+                {/* Looking Country */}
+                <Select
+                  label="Looking Country"
+                  name="countryPreference"
+                  value={form.countryPreference}
+                  onChange={handleField}
+                  options={LOOKING_COUNTRIES}
+                  placeholder="Any country"
+                  optional
+                />
+                <p className="text-[11px] text-gray-400 -mt-2">Only profiles from this country will appear in your browse results.</p>
+
+                {/* Additional Information */}
+                <Textarea
+                  label="Additional Information"
+                  name="about"
+                  value={form.about}
+                  onChange={handleField}
+                  placeholder="Tell us more about yourself....."
+                  rows={4}
+                  optional
+                />
+
+                {/* Your Expectations */}
+                <Textarea
+                  label="Your Expectations"
+                  name="expectations"
+                  value={form.expectations}
+                  onChange={handleField}
+                  placeholder="What are you looking for in a partner......"
+                  rows={4}
+                  optional
+                />
+              </>
+            )}
 
             {/* ── Step 4: Review ────────────────────────────────────────── */}
             {step === 4 && (
@@ -529,7 +548,7 @@ export default function CreateProfilePage() {
                 <div className="rounded-xl border border-gray-100 overflow-hidden">
                   {([
                     ['First Name', form.firstName], ['Last Name', form.lastName],
-                    ['Created By', form.createdBy], ['Gender', form.gender],
+                    ['Created By', form.createdBy], ['Gender', form.gender === 'MALE' ? 'Male' : 'Female'],
                     ['Date of Birth', form.dateOfBirth], ['Height', form.height],
                     ['Appearance', form.appearance], ['Complexion', form.complexion],
                     ['Ethnicity', form.ethnicity], ['Dress Code', form.dressCode],
@@ -544,19 +563,16 @@ export default function CreateProfilePage() {
                     ["Mother's Ethnicity", form.motherEthnicity], ["Mother's Country", form.motherCountry],
                     ["Mother's Occupation", form.motherOccupation], ["Mother's City", form.motherCity],
                     ['Brothers', form.brothers], ['Sisters', form.sisters],
-                    ['Min Age Pref.', form.minAgePreference], ['Max Age Pref.', form.maxAgePreference],
-                    ['Country Pref.', form.countryPreference],
-                    ['Min Height Pref.', form.minHeightPreference ? `${form.minHeightPreference} cm` : ''],
+                    ['Looking Country', form.countryPreference],
+                    ['About Me', form.about ? form.about.substring(0, 60) + (form.about.length > 60 ? '…' : '') : ''],
+                    ['Expectations', form.expectations ? form.expectations.substring(0, 60) + (form.expectations.length > 60 ? '…' : '') : ''],
                   ] as [string, string][]).filter(([, v]) => v).map(([k, v], i) => (
-                    <div key={k} className={`flex items-center justify-between px-4 py-2.5 ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
-                      <span className="text-gray-400 text-xs font-medium">{k}</span>
-                      <span className="font-semibold text-gray-700 text-xs">{v}</span>
+                    <div key={k} className={`flex items-start justify-between px-4 py-2.5 gap-4 ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                      <span className="text-gray-400 text-xs font-medium shrink-0">{k}</span>
+                      <span className="font-semibold text-gray-700 text-xs text-right">{v}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 text-center pt-1">
-                  ✨ A personal bio and expectations will be auto-generated. You can update them anytime.
-                </p>
                 {apiError && (
                   <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-600 flex items-center gap-2">
                     <span>⚠</span>{apiError}

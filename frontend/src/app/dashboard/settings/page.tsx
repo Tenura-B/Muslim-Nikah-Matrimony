@@ -84,6 +84,10 @@ export default function UserSettingsPage() {
   const [email, setEmail] = useState('');
   const [savedPhone, setSavedPhone] = useState('');
   const [savedWhatsapp, setSavedWhatsapp] = useState('');
+  const [phoneVisible, setPhoneVisible] = useState(true);
+  const [whatsappVisible, setWhatsappVisible] = useState(true);
+  const [savedPhoneVisible, setSavedPhoneVisible] = useState(true);
+  const [savedWhatsappVisible, setSavedWhatsappVisible] = useState(true);
 
   useEffect(() => {
     userApi.getMe()
@@ -94,19 +98,34 @@ export default function UserSettingsPage() {
         setWhatsapp(d.whatsappNumber ?? '');
         setSavedPhone(d.phone ?? '');
         setSavedWhatsapp(d.whatsappNumber ?? '');
+        setPhoneVisible(d.phoneVisible !== false);
+        setWhatsappVisible(d.whatsappVisible !== false);
+        setSavedPhoneVisible(d.phoneVisible !== false);
+        setSavedWhatsappVisible(d.whatsappVisible !== false);
       })
       .catch(() => showToast('Failed to load account details.', false))
       .finally(() => setLoadingUser(false));
   }, []);
 
-  const detailsDirty = phone !== savedPhone || whatsapp !== savedWhatsapp;
+  const detailsDirty =
+    phone !== savedPhone ||
+    whatsapp !== savedWhatsapp ||
+    phoneVisible !== savedPhoneVisible ||
+    whatsappVisible !== savedWhatsappVisible;
 
   const saveDetails = async () => {
     setSavingDetails(true);
     try {
-      await userApi.updateMe({ phone: phone || undefined, whatsappNumber: whatsapp || undefined });
+      await userApi.updateMe({
+        phone: phone || undefined,
+        whatsappNumber: whatsapp || undefined,
+        phoneVisible,
+        whatsappVisible,
+      });
       setSavedPhone(phone);
       setSavedWhatsapp(whatsapp);
+      setSavedPhoneVisible(phoneVisible);
+      setSavedWhatsappVisible(whatsappVisible);
       showToast('Account details updated successfully!');
     } catch (e: any) {
       showToast(e.message ?? 'Failed to save.', false);
@@ -223,6 +242,65 @@ export default function UserSettingsPage() {
                 </svg>
               }
             />
+
+            {/* ── Privacy Toggles ─────────────────────────────── */}
+            <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Contact Number Privacy
+              </p>
+              <p className="text-[11px] text-gray-400 leading-relaxed -mt-1">
+                Control who can see your phone and WhatsApp numbers on your public profile.
+              </p>
+
+              {/* Mobile toggle */}
+              <div className="flex items-center justify-between gap-4 py-2.5 border-b border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Show Mobile Number</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {phoneVisible ? 'Visible to other members' : 'Hidden from other members'}
+                  </p>
+                </div>
+                <button
+                  id="toggle-phone-visible"
+                  type="button"
+                  onClick={() => setPhoneVisible(v => !v)}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/30
+                    ${phoneVisible ? 'bg-[#1C3B35]' : 'bg-gray-300'}`}
+                  aria-pressed={phoneVisible}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transform transition duration-200
+                      ${phoneVisible ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+
+              {/* WhatsApp toggle */}
+              <div className="flex items-center justify-between gap-4 py-2.5">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Show WhatsApp Number</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {whatsappVisible ? 'Visible to other members' : 'Hidden from other members'}
+                  </p>
+                </div>
+                <button
+                  id="toggle-whatsapp-visible"
+                  type="button"
+                  onClick={() => setWhatsappVisible(v => !v)}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/30
+                    ${whatsappVisible ? 'bg-[#1C3B35]' : 'bg-gray-300'}`}
+                  aria-pressed={whatsappVisible}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transform transition duration-200
+                      ${whatsappVisible ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3 pt-1">
               <button

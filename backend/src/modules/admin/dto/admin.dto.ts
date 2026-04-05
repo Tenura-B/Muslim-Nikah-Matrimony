@@ -5,6 +5,12 @@ export class ApprovePaymentDto {
   @IsOptional() @IsString() adminNote?: string;
 }
 
+export class RejectPaymentDto {
+  @IsString() paymentId: string;
+  @IsString() reason: string;
+}
+
+
 export class CreatePackageDto {
   @IsString() name: string;
   @IsOptional() @IsString() description?: string;
@@ -24,4 +30,13 @@ export class UpdateSiteSettingsDto {
   @IsOptional() @IsString() siteDiscountLabel?: string;
   @IsOptional() @IsBoolean() siteDiscountActive?: boolean;
   @IsOptional() @IsString() platformCurrency?: string;
+  @IsOptional() @IsString() whatsappContact?: string;
+  @IsOptional() @IsString() bank1AccName?: string;
+  @IsOptional() @IsString() bank1AccNo?: string;
+  @IsOptional() @IsString() bank1BankName?: string;
+  @IsOptional() @IsString() bank1Branch?: string;
+  @IsOptional() @IsString() bank2AccName?: string;
+  @IsOptional() @IsString() bank2AccNo?: string;
+  @IsOptional() @IsString() bank2BankName?: string;
+  @IsOptional() @IsString() bank2Branch?: string;
 }

@@ -3,10 +3,8 @@
 import { useEffect, useState } from 'react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { profileApi, paymentApi, packagesApi } from '@/services/api';
+import { profileApi, paymentApi, packagesApi, settingsApi } from '@/services/api';
 import { useCurrency } from '@/hooks/useCurrency';
-
-const STEPS = ['Personal', 'Location & Edu', 'Family', 'Preferences', 'Review'];
 
 const statusBadge = (s: string) => {
   const map: Record<string, string> = {
@@ -19,29 +17,6 @@ const statusBadge = (s: string) => {
   };
   return map[s] ?? 'bg-gray-100 text-gray-500';
 };
-
-/* ── Input helper ─────────────────────────────────────────────────── */
-function Field({
-  label, name, value, onChange, type = 'text', placeholder = '', required = false, error, children,
-}: any) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      {children ?? (
-        <input
-          type={type} name={name} value={value ?? ''} onChange={onChange}
-          placeholder={placeholder} required={required}
-          className={`w-full border rounded-xl px-3.5 py-2.5 text-sm text-gray-700 outline-none focus:border-[#1C3B35] transition bg-gray-50 focus:bg-white ${
-            error ? 'border-red-400 bg-red-50/30' : 'border-gray-200'
-          }`}
-        />
-      )}
-      {error && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><span>⚠</span>{error}</p>}
-    </div>
-  );
-}
 
 /* ── Delete confirm modal ─────────────────────────────────────────── */
 function DeleteModal({ name, onConfirm, onClose }: { name: string; onConfirm: () => void; onClose: () => void }) {
@@ -77,6 +52,7 @@ function DeleteModal({ name, onConfirm, onClose }: { name: string; onConfirm: ()
     </div>
   );
 }
+
 /* ── View Profile Modal ───────────────────────────────────────────── */
 function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => void }) {
   const InfoRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string | number | null }) =>
@@ -107,13 +83,11 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
   const age = profile.dateOfBirth
     ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null;
-
   const iconCls = 'w-3.5 h-3.5 text-[#1C3B35]';
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center p-3 sm:p-6 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
       <div className="w-full max-w-2xl my-auto" onClick={e => e.stopPropagation()}>
-        {/* Header card */}
         <div className="bg-[#1C3B35] rounded-t-3xl px-6 pt-6 pb-5">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
@@ -126,9 +100,7 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
                 <div className="flex items-center gap-2 mt-1.5">
                   {age && <span className="text-xs text-white/70">{age} yrs</span>}
                   {profile.gender && <span className="text-xs bg-white/15 text-white/80 px-2 py-0.5 rounded-full capitalize">{profile.gender.toLowerCase()}</span>}
-                  {profile.status && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                    profile.status === 'ACTIVE' ? 'bg-green-400/20 text-green-200' : 'bg-white/10 text-white/60'
-                  }`}>{profile.status.replace('_', ' ')}</span>}
+                  {profile.status && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${profile.status === 'ACTIVE' ? 'bg-green-400/20 text-green-200' : 'bg-white/10 text-white/60'}`}>{profile.status.replace('_', ' ')}</span>}
                 </div>
               </div>
             </div>
@@ -137,8 +109,6 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
             </button>
           </div>
         </div>
-
-        {/* Body */}
         <div className="bg-gray-50 rounded-b-3xl px-4 py-4 space-y-3">
           <Section title="Personal Details">
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>} label="Created By" value={profile.createdBy} />
@@ -146,13 +116,12 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>} label="Height" value={profile.height ? `${profile.height} cm` : null} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>} label="Appearance" value={profile.appearance} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>} label="Complexion" value={profile.complexion} />
-            <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h0a2.5 2.5 0 002.5 2.5h0A2.5 2.5 0 0115.5 13"/></svg>} label="Ethnicity" value={profile.ethnicity} />
+            <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945"/></svg>} label="Ethnicity" value={profile.ethnicity} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>} label="Dress Code" value={profile.dressCode} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>} label="Civil Status" value={profile.civilStatus} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>} label="Children" value={profile.children} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>} label="Family Status" value={profile.familyStatus} />
           </Section>
-
           <Section title="Location & Education">
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>} label="Country" value={profile.country} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>} label="State / Province" value={profile.state} />
@@ -163,7 +132,6 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>} label="Occupation" value={profile.occupation} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>} label="Profession / Job Title" value={profile.profession} />
           </Section>
-
           <Section title="Family Details">
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>} label="Father's Ethnicity" value={profile.fatherEthnicity} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/></svg>} label="Father's Country" value={profile.fatherCountry} />
@@ -175,12 +143,10 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>} label="Mother's City" value={profile.motherCity} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>} label="Total Siblings" value={profile.siblings != null ? `${profile.siblings}` : null} />
           </Section>
-
           <Section title="Additional Information">
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>} label="About Me" value={profile.aboutUs} />
             <InfoRow icon={<svg className={iconCls} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"/></svg>} label="Expectations" value={profile.expectations} />
           </Section>
-
           <button onClick={onClose}
             className="w-full mt-1 bg-[#1C3B35] text-white text-sm font-semibold py-3 rounded-2xl hover:bg-[#15302a] transition">
             Close
@@ -191,19 +157,16 @@ function ViewProfileModal({ profile, onClose }: { profile: any; onClose: () => v
   );
 }
 
-
 export default function ProfilesPage() {
   const router = useRouter();
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
-  const [initiating, setInitiating] = useState<string | null>(null);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
-  // Privacy per-profile: { [profileId]: { showRealName, nickname, saving } }
-  const [privacy, setPrivacy] = useState<Record<string, { showRealName: boolean; nickname: string; saving: boolean }>>({}); 
-  // Boost per-profile: { [profileId]: { boosting, boostExpiresAt } }
+  const [privacy, setPrivacy] = useState<Record<string, { showRealName: boolean; nickname: string; saving: boolean }>>({});
   const [boost, setBoost] = useState<Record<string, { boosting: boolean; boostExpiresAt?: string | null }>>({});
+  const [siteSettings, setSiteSettings] = useState<any>(null);
   const [boostPlans, setBoostPlans] = useState<any[]>([
     { durationDays: 10, price: 4.99, name: '10 Days', description: 'Top listing for 10 days' },
     { durationDays: 15, price: 7.99, name: '15 Days', description: 'Top listing for 15 days' },
@@ -219,17 +182,13 @@ export default function ProfilesPage() {
     setLoading(true);
     profileApi.getMyProfiles().then((r) => setProfiles(r.data ?? [])).finally(() => setLoading(false));
     packagesApi.getActive('BOOST').then((r) => {
-      if (r.data && r.data.length > 0) {
-        setBoostPlans(r.data);
-      }
+      if (r.data && r.data.length > 0) setBoostPlans(r.data);
     }).catch(() => {});
+    settingsApi.get().then((r) => setSiteSettings(r)).catch(() => {});
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  // Initialise privacy state from loaded profiles
   useEffect(() => {
     const initP: Record<string, { showRealName: boolean; nickname: string; saving: boolean }> = {};
     const initB: Record<string, { boosting: boolean; boostExpiresAt?: string | null }> = {};
@@ -244,17 +203,9 @@ export default function ProfilesPage() {
   const purchaseBoost = async (profileId: string, days: number) => {
     const plan = boostPlans.find(p => p.durationDays === days);
     if (!plan) return;
-    const price = plan.price;
-
     setBoost(prev => ({ ...prev, [profileId]: { ...prev[profileId], boosting: true } }));
     try {
-      await paymentApi.initiate({
-        childProfileId: profileId,
-        amount: price,
-        method: 'GATEWAY',
-        purpose: 'BOOST',
-        days: days
-      });
+      await paymentApi.initiate({ childProfileId: profileId, amount: plan.price, method: 'GATEWAY', purpose: 'BOOST', days });
       showToast(`Boost payment initiated for ${days} days! Admin will approve shortly.`);
       load();
     } catch (e: any) {
@@ -286,16 +237,6 @@ export default function ProfilesPage() {
     }
   };
 
-  const initiatePayment = async (profileId: string) => {
-    setInitiating(profileId);
-    try {
-      await paymentApi.initiate({ childProfileId: profileId, amount: 29.99, method: 'GATEWAY' });
-      showToast('Payment initiated! Head to Subscription page to complete.');
-    } catch (e: any) {
-      showToast(e.message ?? 'Failed to initiate payment', false);
-    } finally { setInitiating(null); }
-  };
-
   const deleteProfile = async (id: string) => {
     try {
       await profileApi.delete(id);
@@ -319,7 +260,6 @@ export default function ProfilesPage() {
 
   return (
     <>
-      {/* Delete confirm */}
       {deleteTarget && (
         <DeleteModal
           name={deleteTarget.name}
@@ -333,7 +273,7 @@ export default function ProfilesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">My Profiles</h1>
-            <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Manage your family members' matrimonial profiles</p>
+            <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Manage your family members&apos; matrimonial profiles</p>
           </div>
           <button onClick={() => router.push('/dashboard/create-profile')}
             className="text-sm bg-[#1C3B35] cursor-pointer text-white px-5 py-2.5 rounded-xl hover:bg-[#15302a]/90 transition font-semibold flex items-center gap-2">
@@ -372,16 +312,17 @@ export default function ProfilesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {profiles.map((p) => (
-              <div key={p.id}
-                className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                 {/* Card header */}
                 <div className={`px-5 py-4 border-b border-gray-50 flex items-center justify-between ${
                   p.status === 'ACTIVE' ? 'bg-green-50' :
-                  p.status === 'PAYMENT_PENDING' ? 'bg-amber-50' : 'bg-gray-50'
+                  p.status === 'PAYMENT_PENDING' ? 'bg-amber-50' :
+                  p.status === 'DRAFT' && p.rejectionReason ? 'bg-red-50' : 'bg-gray-50'
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                      p.status === 'ACTIVE' ? 'bg-[#1C3B35] text-white' : 'bg-gray-200 text-gray-600'
+                      p.status === 'ACTIVE' ? 'bg-[#1C3B35] text-white' :
+                      p.status === 'DRAFT' && p.rejectionReason ? 'bg-red-200 text-red-700' : 'bg-gray-200 text-gray-600'
                     }`}>
                       {p.name?.[0]?.toUpperCase()}
                     </div>
@@ -397,8 +338,7 @@ export default function ProfilesPage() {
 
                 {/* Card body */}
                 <div className="px-5 py-4 space-y-3">
-
-                  {/* Gender avatar */}
+                  {/* Gender */}
                   <div className="flex items-center gap-3 py-1">
                     {p.gender === 'MALE' ? (
                       <div className="flex items-center gap-2.5">
@@ -443,7 +383,7 @@ export default function ProfilesPage() {
                     </div>
                   )}
 
-                  {/* ── Profile Status Selector ──────────────────────── */}
+                  {/* Profile Status Selector (ACTIVE/PAUSED/INACTIVE only) */}
                   {['ACTIVE', 'PAUSED', 'INACTIVE'].includes(p.status) && (
                     <div className="mt-3 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
                       <p className="text-xs font-semibold text-gray-700 mb-2">Profile Visibility</p>
@@ -487,7 +427,7 @@ export default function ProfilesPage() {
                               <span className={`w-2 h-2 rounded-full ${isCurrent ? opt.dot : 'bg-gray-300'}`} />
                               <span className="text-[10px] font-bold leading-tight">{opt.label}</span>
                               <span className="text-[9px] leading-tight opacity-70">{opt.desc}</span>
-                              {isLoading && isCurrent === false && statusUpdating === p.id && (
+                              {isLoading && !isCurrent && statusUpdating === p.id && (
                                 <span className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-xl">
                                   <svg className="w-3 h-3 animate-spin text-gray-500" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -502,7 +442,7 @@ export default function ProfilesPage() {
                     </div>
                   )}
 
-
+                  {/* Privacy settings */}
                   {privacy[p.id] && (
                     <div className="mt-3 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3 space-y-3">
                       <div className="flex items-center justify-between">
@@ -510,7 +450,6 @@ export default function ProfilesPage() {
                           <p className="text-xs font-semibold text-gray-700">Show Real Name Publicly</p>
                           <p className="text-[10px] text-gray-400 mt-0.5">When OFF, your nickname is shown instead</p>
                         </div>
-                        {/* iOS-style toggle */}
                         <button
                           onClick={() => setPrivacy(prev => ({
                             ...prev,
@@ -519,23 +458,19 @@ export default function ProfilesPage() {
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                             privacy[p.id].showRealName ? 'bg-[#1C3B35]' : 'bg-gray-300'
                           }`}>
-                          <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow transition-transform ${
+                          <span className={`inline-block transform rounded-full bg-white shadow transition-transform ${
                             privacy[p.id].showRealName ? 'translate-x-6' : 'translate-x-1'
                           }`} style={{ width: 18, height: 18 }} />
                         </button>
                       </div>
 
-                      {/* Nickname input — shown when real name is hidden */}
                       {!privacy[p.id].showRealName && (
                         <div>
                           <label className="block text-[10px] font-semibold text-gray-500 mb-1">Nickname (shown publicly)</label>
                           <input
                             type="text"
                             value={privacy[p.id].nickname}
-                            onChange={e => setPrivacy(prev => ({
-                              ...prev,
-                              [p.id]: { ...prev[p.id], nickname: e.target.value }
-                            }))}
+                            onChange={e => setPrivacy(prev => ({ ...prev, [p.id]: { ...prev[p.id], nickname: e.target.value } }))}
                             placeholder="e.g. Sister Mariam, Brother Ali"
                             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#1C3B35] transition bg-white"
                           />
@@ -565,10 +500,9 @@ export default function ProfilesPage() {
                   )}
                 </div>
 
-                {/* ── Boost Your Profile ─────────────────────────── */}
+                {/* Boost Your Profile (ACTIVE only) */}
                 {p.status === 'ACTIVE' && boost[p.id] && (
                   <div className="mx-3 mb-4 rounded-2xl border border-[#DB9D30]/30 bg-gradient-to-br from-[#FFFBF0] to-[#FFF8E7] p-3 sm:p-4">
-                    {/* Header */}
                     <div className="flex flex-wrap items-start gap-2 mb-3">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <span className="text-[#DB9D30] text-base flex-shrink-0">⚡</span>
@@ -584,7 +518,6 @@ export default function ProfilesPage() {
                       )}
                     </div>
 
-                    {/* Active boost info */}
                     {boost[p.id].boostExpiresAt && new Date(boost[p.id].boostExpiresAt!) > new Date() ? (
                       <div className="bg-[#DB9D30]/10 rounded-xl px-3 py-2 text-[11px] text-[#8B5E00] font-poppins">
                         ✦ VIP boost active until{' '}
@@ -593,40 +526,38 @@ export default function ProfilesPage() {
                     ) : (
                       <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                         {boostPlans.map((plan, idx) => {
-                          const popular = idx === 1; // Middle one is popular styling
+                          const popular = idx === 1;
                           return (
-                          <div key={plan.id ?? plan.durationDays} className={`relative rounded-xl border-2 p-2 sm:p-3 text-center cursor-pointer transition-all ${
-                            popular
-                              ? 'border-[#DB9D30] bg-[#DB9D30]/8 shadow-sm'
-                              : 'border-[#DB9D30]/25 bg-white hover:border-[#DB9D30]/60'
-                          }`}>
-                            {popular && (
-                              <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#DB9D30] text-white text-[7px] sm:text-[8px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
-                                POPULAR
-                              </span>
-                            )}
-                            <p className="text-[9px] sm:text-[11px] font-bold text-[#8B5E00] font-poppins leading-tight">{plan.name}</p>
-                            <p className="text-[13px] sm:text-[16px] font-extrabold text-[#DB9D30] font-poppins mt-0.5 leading-tight">{plan.currency || 'Rs.'} {plan.price}</p>
-                            <p className="hidden sm:block text-[9px] text-[#A07830] font-poppins mt-0.5 leading-tight">{plan.description || `Top listing for ${plan.durationDays} days`}</p>
-                            <button
-                              onClick={() => purchaseBoost(p.id, plan.durationDays)}
-                              disabled={boost[p.id]?.boosting}
-                              className={`mt-1.5 sm:mt-2 w-full py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold font-poppins transition-all disabled:opacity-50 ${
-                                plan.popular
-                                  ? 'bg-[#DB9D30] text-white hover:bg-[#c98b26] shadow-sm'
-                                  : 'bg-[#DB9D30]/15 text-[#8B5E00] hover:bg-[#DB9D30]/30 border border-[#DB9D30]/30'
-                              }`}
-                            >
-                              {boost[p.id]?.boosting ? (
-                                <span className="flex items-center justify-center gap-1">
-                                  <svg className="w-2 h-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-                                  </svg>
+                            <div key={plan.id ?? plan.durationDays} className={`relative rounded-xl border-2 p-2 sm:p-3 text-center cursor-pointer transition-all ${
+                              popular ? 'border-[#DB9D30] bg-[#DB9D30]/8 shadow-sm' : 'border-[#DB9D30]/25 bg-white hover:border-[#DB9D30]/60'
+                            }`}>
+                              {popular && (
+                                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-[#DB9D30] text-white text-[7px] sm:text-[8px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
+                                  POPULAR
                                 </span>
-                              ) : '⚡ Boost'}
-                            </button>
-                          </div>
+                              )}
+                              <p className="text-[9px] sm:text-[11px] font-bold text-[#8B5E00] font-poppins leading-tight">{plan.name}</p>
+                              <p className="text-[13px] sm:text-[16px] font-extrabold text-[#DB9D30] font-poppins mt-0.5 leading-tight">{plan.currency || 'Rs.'} {plan.price}</p>
+                              <p className="hidden sm:block text-[9px] text-[#A07830] font-poppins mt-0.5 leading-tight">{plan.description || `Top listing for ${plan.durationDays} days`}</p>
+                              <button
+                                onClick={() => purchaseBoost(p.id, plan.durationDays)}
+                                disabled={boost[p.id]?.boosting}
+                                className={`mt-1.5 sm:mt-2 w-full py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] font-bold font-poppins transition-all disabled:opacity-50 ${
+                                  popular
+                                    ? 'bg-[#DB9D30] text-white hover:bg-[#c98b26] shadow-sm'
+                                    : 'bg-[#DB9D30]/15 text-[#8B5E00] hover:bg-[#DB9D30]/30 border border-[#DB9D30]/30'
+                                }`}
+                              >
+                                {boost[p.id]?.boosting ? (
+                                  <span className="flex items-center justify-center gap-1">
+                                    <svg className="w-2 h-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                                    </svg>
+                                  </span>
+                                ) : '⚡ Boost'}
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -634,54 +565,104 @@ export default function ProfilesPage() {
                   </div>
                 )}
 
-                {/* Card footer actions */}
-                <div className="px-5 py-3 border-t border-gray-50 flex items-center justify-between gap-2">
-                  <div className="flex gap-2">
-                    {(p.status === 'DRAFT' || p.status === 'EXPIRED') && (
-                      <button
-                        onClick={() => initiatePayment(p.id)}
-                        disabled={initiating === p.id}
-                        className="text-xs bg-[#1C3B35] text-white px-3.5 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold disabled:opacity-50 flex items-center gap-1.5">
-                        {initiating === p.id ? (
-                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
-                          </svg>
-                        )}
-                        {p.status === 'EXPIRED' ? 'Renew' : 'Activate'}
-                      </button>
-                    )}
-                    {p.status === 'ACTIVE' && (
-                      <a href={`/dashboard/chat`}
-                        className="text-xs border border-[#1C3B35] text-[#1C3B35] px-3.5 py-2 rounded-lg hover:bg-[#1C3B35]/5 transition font-semibold flex items-center gap-1.5">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                {/* Card footer */}
+                <div className="px-5 py-3 border-t border-gray-50">
+
+                  {/* ── Rejection reason notice (DRAFT with rejectionReason) ── */}
+                  {p.status === 'DRAFT' && p.rejectionReason && (
+                    <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                         </svg>
-                        Chat
-                      </a>
-                    )}
-                    {/* View Details button */}
-                    <button
-                      onClick={() => router.push(`/dashboard/profiles/${p.id}`)}
-                      className="text-xs border border-gray-200 text-gray-600 px-3.5 py-2 rounded-lg hover:bg-[#1C3B35]/5 hover:border-[#1C3B35] hover:text-[#1C3B35] transition font-semibold flex items-center gap-1.5">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        <div>
+                          <p className="text-xs font-bold text-red-700">
+                            {p.rejectionReason === 'Payment not received' ? 'Payment Rejected' : 'Profile Rejected'}
+                          </p>
+                          <p className="text-xs text-red-600 leading-relaxed mt-0.5">{p.rejectionReason}</p>
+                        </div>
+                      </div>
+                      {p.rejectionReason === 'Payment not received' ? (
+                        <p className="text-[11px] text-red-400 pl-6">Please re-submit your payment to activate this profile.</p>
+                      ) : (
+                        <p className="text-[11px] text-red-400 pl-6">Please contact the admin to resolve this issue.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-2 flex-wrap">
+
+                      {/* DRAFT / EXPIRED → redirect to payment page
+                           Only show Re-Activate if reason is 'Payment not received' or no rejection reason */}
+                      {(p.status === 'DRAFT' || p.status === 'EXPIRED') && (
+                        p.rejectionReason && p.rejectionReason !== 'Payment not received' ? (
+                          /* Custom rejection reason → contact admin via WhatsApp */
+                          <a
+                            href={`https://wa.me/${(siteSettings?.whatsappContact ?? '').replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs bg-green-600 text-white px-3.5 py-2 rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-1.5">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            Contact Admin on WhatsApp
+                          </a>
+                        ) : (
+                          /* Normal DRAFT or 'Payment not received' → Re-Activate / Activate */
+                          <button
+                            onClick={() => router.push(`/select-plan?profileId=${p.id}`)}
+                            className="text-xs bg-[#1C3B35] text-white px-3.5 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1.5">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                              <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
+                            </svg>
+                            {p.status === 'EXPIRED' ? 'Renew' : (p.rejectionReason ? 'Re-Activate' : 'Activate')}
+                          </button>
+                        )
+                      )}
+
+                      {/* PAYMENT_PENDING → review message */}
+                      {p.status === 'PAYMENT_PENDING' && (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">
+                          <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                          </svg>
+                          Your account will be activated shortly — admin is reviewing it.
+                        </div>
+                      )}
+
+                      {/* ACTIVE → Chat button */}
+                      {p.status === 'ACTIVE' && (
+                        <a href="/dashboard/chat"
+                          className="text-xs border border-[#1C3B35] text-[#1C3B35] px-3.5 py-2 rounded-lg hover:bg-[#1C3B35]/5 transition font-semibold flex items-center gap-1.5">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          Chat
+                        </a>
+                      )}
+
+                      {/* View Details */}
+                      <button
+                        onClick={() => router.push(`/dashboard/profiles/${p.id}`)}
+                        className="text-xs border border-gray-200 text-gray-600 px-3.5 py-2 rounded-lg hover:bg-[#1C3B35]/5 hover:border-[#1C3B35] hover:text-[#1C3B35] transition font-semibold flex items-center gap-1.5">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        View Details
+                      </button>
+                    </div>
+
+                    {/* Delete */}
+                    <button onClick={() => setDeleteTarget(p)}
+                      className="text-xs text-gray-400 hover:text-red-500 transition flex items-center gap-1 py-2 px-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                       </svg>
-                      View Details
+                      Delete
                     </button>
                   </div>
-                  <button onClick={() => setDeleteTarget(p)}
-                    className="text-xs text-gray-400 hover:text-red-500 transition flex items-center gap-1 py-2 px-1">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                    </svg>
-                    Delete
-                  </button>
                 </div>
               </div>
             ))}

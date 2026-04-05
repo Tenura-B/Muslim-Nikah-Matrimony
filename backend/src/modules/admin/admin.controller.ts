@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Put, Delete, Body, Query, Param, UseGuards } from '@nestjs/common';
-import { AdminService, ApprovePaymentDto, CreatePackageDto, UpdateSiteSettingsDto } from './admin.service';
+import { AdminService, ApprovePaymentDto, RejectPaymentDto, CreatePackageDto, UpdateSiteSettingsDto } from './admin.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -57,6 +57,11 @@ export class AdminController {
   @Post('payment/approve')
   approvePayment(@CurrentUser() user: any, @Body() dto: ApprovePaymentDto) {
     return this.service.approvePayment(user.userId, dto);
+  }
+
+  @Post('payment/reject')
+  rejectPayment(@CurrentUser() user: any, @Body() dto: RejectPaymentDto) {
+    return this.service.rejectPayment(user.userId, dto);
   }
 
   @Get('payments')

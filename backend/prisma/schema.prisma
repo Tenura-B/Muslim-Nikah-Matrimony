@@ -61,8 +61,10 @@ model User {
   email         String         @unique
   password      String
   role          Role           @default(PARENT)
-  phone         String?
+  phone          String?
   whatsappNumber String?
+  phoneVisible   Boolean        @default(true)
+  whatsappVisible Boolean       @default(true)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -132,6 +134,7 @@ model ChildProfile {
   boostExpiresAt      DateTime?                       // if set and in future, profile is boosted (shown at top)
   viewCount           Int            @default(0)     // incremented each time profile detail page is viewed
   status              ProfileStatus  @default(DRAFT)
+  rejectionReason     String?                         // set by admin when rejecting a payment
 
   // Field visibility controls
   phoneVisibility     FieldVisibility @default(PRIVATE)
@@ -188,6 +191,7 @@ model Payment {
   adminNote      String?
   approvedBy     String?
   approvedAt     DateTime?
+  rejectionReason String?
 
   // Gateway
   gatewayRef     String?
@@ -241,6 +245,18 @@ model SiteSettings {
   siteDiscountLabel   String   @default("")
   siteDiscountActive  Boolean  @default(false)
   platformCurrency    String   @default("LKR")
+
+  // Payment contact & bank details
+  whatsappContact     String   @default("+94 705 687 697")
+  bank1AccName        String   @default("M T M Akram")
+  bank1AccNo          String   @default("112054094468")
+  bank1BankName       String   @default("Sampath Bank PLC")
+  bank1Branch         String   @default("Ratmalana")
+  bank2AccName        String   @default("M T M Akram")
+  bank2AccNo          String   @default("89870069")
+  bank2BankName       String   @default("BOC")
+  bank2Branch         String   @default("Anuradhapura")
+
   updatedAt           DateTime @updatedAt
 }
 

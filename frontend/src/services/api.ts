@@ -62,7 +62,7 @@ export const authApi = {
 // ─── User ──────────────────────────────────────────────────────────────────
 export const userApi = {
   getMe: () => request<any>('/user/me'),
-  updateMe: (body: { phone?: string; whatsappNumber?: string }) =>
+  updateMe: (body: { phone?: string; whatsappNumber?: string; phoneVisible?: boolean; whatsappVisible?: boolean }) =>
     request<any>('/user/me', { method: 'PUT', body: JSON.stringify(body) }),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ success: boolean; message: string }>('/user/change-password', {
@@ -144,6 +144,9 @@ export const adminApi = {
     return request<any>('/admin/payment/approve', { method: 'POST', body: JSON.stringify(body) });
   },
 
+  rejectPayment: (body: { paymentId: string; reason: string }) =>
+    request<any>('/admin/payment/reject', { method: 'POST', body: JSON.stringify(body) }),
+
   payments: (status?: string) => request<any>(`/admin/payments${status ? `?status=${status}` : ''}`),
   users: () => request<any>('/admin/users'),
   profiles: (status?: string) => request<any>(`/admin/profiles${status ? `?status=${status}` : ''}`),
@@ -177,7 +180,21 @@ export const adminApi = {
 
   // Site settings
   getSiteSettings: () => request<any>('/admin/settings'),
-  updateSiteSettings: (body: { siteDiscountPct?: number; siteDiscountLabel?: string; siteDiscountActive?: boolean; platformCurrency?: string }) =>
+  updateSiteSettings: (body: {
+    siteDiscountPct?: number;
+    siteDiscountLabel?: string;
+    siteDiscountActive?: boolean;
+    platformCurrency?: string;
+    whatsappContact?: string;
+    bank1AccName?: string;
+    bank1AccNo?: string;
+    bank1BankName?: string;
+    bank1Branch?: string;
+    bank2AccName?: string;
+    bank2AccNo?: string;
+    bank2BankName?: string;
+    bank2Branch?: string;
+  }) =>
     request<any>('/admin/settings', { method: 'PUT', body: JSON.stringify(body) }),
 };
 
@@ -212,3 +229,7 @@ export const publicProfilesApi = {
   getById: (id: string) => request<any>(`/profile/public/${id}`),
 };
 
+// ─── Public Site Settings ──────────────────────────────────────────────────
+export const settingsApi = {
+  get: () => request<any>('/settings'),
+};

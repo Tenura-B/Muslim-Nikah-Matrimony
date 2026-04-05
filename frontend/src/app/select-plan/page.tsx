@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { packagesApi, paymentApi, profileApi } from '@/services/api';
+import { packagesApi, paymentApi, profileApi, settingsApi } from '@/services/api';
 import { useCurrency } from '@/hooks/useCurrency';
 import Link from 'next/link';
 
@@ -183,6 +183,9 @@ export default function SelectPlanPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [siteDiscount, setSiteDiscount] = useState<SiteDiscount>({ active: false, pct: 0, label: '' });
+  const [whatsappContact, setWhatsappContact] = useState('+94 705 687 697');
+  const [bank1, setBank1] = useState({ accName: 'M T M Akram', accNo: '112054094468', bankName: 'Sampath Bank PLC', branch: 'Ratmalana' });
+  const [bank2, setBank2] = useState({ accName: 'M T M Akram', accNo: '89870069', bankName: 'BOC', branch: 'Anuradhapura' });
 
   const reloadProfiles = (showLoadingSpinner = false) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('mn_token') : null;
@@ -214,6 +217,16 @@ export default function SelectPlanPage() {
         setSelected(FALLBACK[0]);
       })
       .finally(() => setLoading(false));
+
+    // Load site settings for bank/whatsapp details
+    settingsApi.get()
+      .then((r: any) => {
+        const d = r.data ?? {};
+        if (d.whatsappContact) setWhatsappContact(d.whatsappContact);
+        if (d.bank1AccName) setBank1({ accName: d.bank1AccName, accNo: d.bank1AccNo ?? '', bankName: d.bank1BankName ?? '', branch: d.bank1Branch ?? '' });
+        if (d.bank2AccName) setBank2({ accName: d.bank2AccName, accNo: d.bank2AccNo ?? '', bankName: d.bank2BankName ?? '', branch: d.bank2Branch ?? '' });
+      })
+      .catch(() => { /* use defaults */ });
 
     // Always load real profiles from API (even if profileId is in URL)
     reloadProfiles(true);
@@ -286,10 +299,12 @@ export default function SelectPlanPage() {
       )}
 
       {/* Breadcrumb */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/" className="hover:text-[#1B6B4A] transition">🏠 Home</Link>
-        <span>/</span>
-        <span className="text-[#1B6B4A] font-medium">📦 Select Package</span>
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-2 text-sm text-gray-500">
+          <Link href="/" className="hover:text-[#1B6B4A] transition">🏠 Home</Link>
+          <span>/</span>
+          <span className="text-[#1B6B4A] font-medium">📦 Select Package</span>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
@@ -420,7 +435,7 @@ export default function SelectPlanPage() {
                     {selected ? fmt(selDisc > 0 ? selFinal : selected.price) : `${symbol} 0.00`}
                   </span>
                 </div>
-                {selDisc > 0 && (
+                {selDisc > 0 && siteDiscount.active && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Savings ({selDisc}% off)</span>
                     <span className="font-semibold text-red-500">-{fmt(selOrig - selFinal)}</span>
@@ -439,24 +454,24 @@ export default function SelectPlanPage() {
             <div className="bg-[#1B3A2D] text-white rounded-xl p-5 text-sm space-y-4">
               <p className="text-center text-white/90 leading-relaxed">
                 Please deposit/transfer the amount to the bank account mentioned below and send the receipt to{' '}
-                <span className="font-bold text-[#F5C518]">+94 705 687 697</span> WhatsApp
+                <a href={`https://wa.me/${whatsappContact.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="font-bold text-[#F5C518] hover:underline">{whatsappContact}</a> WhatsApp
               </p>
               <p className="text-center text-white/70 text-xs">Mention your Username on the WhatsApp</p>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-white/10 rounded-lg p-3 space-y-1">
                   <p className="font-bold text-[#F5C518]">Bank Account</p>
-                  <p>Acc Name: M T M Akram</p>
-                  <p>Acc No: 112054094468</p>
-                  <p>Bank: Sampath Bank PLC</p>
-                  <p>Branch: Ratmalana</p>
+                  <p>Acc Name: {bank1.accName}</p>
+                  <p>Acc No: {bank1.accNo}</p>
+                  <p>Bank: {bank1.bankName}</p>
+                  <p>Branch: {bank1.branch}</p>
                 </div>
                 <div className="bg-white/10 rounded-lg p-3 space-y-1">
                   <p className="font-bold text-[#F5C518]">Bank Account</p>
-                  <p>Acc Name: M T M Akram</p>
-                  <p>Acc No: 89870069</p>
-                  <p>Bank: BOC</p>
-                  <p>Branch: Anuradhapura</p>
+                  <p>Acc Name: {bank2.accName}</p>
+                  <p>Acc No: {bank2.accNo}</p>
+                  <p>Bank: {bank2.bankName}</p>
+                  <p>Branch: {bank2.branch}</p>
                 </div>
               </div>
 
@@ -471,28 +486,41 @@ export default function SelectPlanPage() {
                       </svg>
                       <span className="text-white/50">Loading your profile...</span>
                     </div>
-                  ) : profiles.length > 0 ? (
-                    <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 text-xs">
-                      <svg className="w-3.5 h-3.5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      <span className="text-white/80">Profile: <strong className="text-white">{profiles[0]?.name ?? 'Your Profile'}</strong>
-                        {profiles[0]?.status === 'PAYMENT_PENDING' && (
-                          <span className="ml-1 text-amber-300">(awaiting approval)</span>
-                        )}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 rounded-lg px-3 py-2 text-xs">
-                      <svg className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      <span className="text-amber-200">No profile yet - one will be created when you click submit</span>
-                    </div>
-                  )}
+                  ) : (() => {
+                    // When a specific profileId is in the URL, check THAT profile's status
+                    const activeProfile = preselectedProfileId
+                      ? profiles.find((p: any) => p.id === preselectedProfileId) ?? profiles[0]
+                      : profiles[0];
+                    const isPending = activeProfile?.status === 'PAYMENT_PENDING';
+                    return activeProfile ? (
+                      <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2 text-xs">
+                        <svg className="w-3.5 h-3.5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span className="text-white/80">Profile: <strong className="text-white">{activeProfile?.name ?? 'Your Profile'}</strong>
+                          {isPending && (
+                            <span className="ml-1 text-amber-300">(awaiting approval)</span>
+                          )}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 bg-amber-500/20 border border-amber-400/30 rounded-lg px-3 py-2 text-xs">
+                        <svg className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span className="text-amber-200">No profile yet - one will be created when you click submit</span>
+                      </div>
+                    );
+                  })()}
 
-                  {/* If profile already has pending payment, block re-submission */}
-                  {!profilesLoading && profiles.length > 0 && profiles[0]?.status === 'PAYMENT_PENDING' ? (
+                  {/* If THIS profile already has a pending payment, block re-submission */}
+                  {!profilesLoading && (() => {
+                    const activeProfile = preselectedProfileId
+                      ? profiles.find((p: any) => p.id === preselectedProfileId) ?? null
+                      : profiles[0];
+                    const isPending = activeProfile?.status === 'PAYMENT_PENDING';
+                    return isPending;
+                  })() ? (
                     <div className="space-y-3">
                       <div className="bg-green-700/30 border border-green-500/40 rounded-lg px-4 py-3 text-center">
                         <p className="text-green-300 font-semibold text-sm">✅ Payment Already Submitted</p>
