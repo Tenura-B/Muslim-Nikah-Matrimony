@@ -7,6 +7,8 @@ import { IsOptional, IsString, MinLength } from 'class-validator';
 class UpdateUserDto {
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() whatsappNumber?: string;
+  @IsOptional() phoneVisible?: boolean;
+  @IsOptional() whatsappVisible?: boolean;
 }
 
 class ChangePasswordDto {

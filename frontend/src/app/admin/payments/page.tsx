@@ -7,13 +7,14 @@ import { useCurrency } from '@/hooks/useCurrency';
 type Payment = {
   id: string; amount: number; currency: string; method: string;
   status: string; bankRef?: string; bankSlipUrl?: string; purpose?: string;
-  adminNote?: string; approvedAt?: string; createdAt: string;
+  adminNote?: string; approvedAt?: string; createdAt: string; rejectionReason?: string;
   user?: { email: string }; childProfile?: { id: string; name: string; memberId?: string };
 };
 
 const STATUS_OPTIONS = ['ALL', 'PENDING', 'SUCCESS', 'FAILED'];
+const REJECT_REASONS = ['Payment not received', 'Other'];
 
-/* ── Modal ───────────────────────────────────────────────────────────────── */
+/* ── Approve Modal ───────────────────────────────────────────────────────────── */
 function ApproveModal({
   payment, onClose, onDone,
 }: { payment: Payment; onClose: () => void; onDone: () => void }) {
@@ -107,6 +108,110 @@ function ApproveModal({
   );
 }
 
+/* ── Reject Modal ────────────────────────────────────────────────────────────── */
+function RejectModal({
+  payment, onClose, onDone,
+}: { payment: Payment; onClose: () => void; onDone: () => void }) {
+  const [reasonType, setReasonType] = useState('Payment not received');
+  const [customReason, setCustomReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const { fmt } = useCurrency();
+
+  const finalReason = reasonType === 'Other' ? customReason.trim() : reasonType;
+
+  const submit = async () => {
+    if (!finalReason) { setErr('Please enter a reason.'); return; }
+    setLoading(true); setErr('');
+    try {
+      await adminApi.rejectPayment({ paymentId: payment.id, reason: finalReason });
+      onDone();
+    } catch (e: any) {
+      setErr(e.message ?? 'Rejection failed');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Reject Payment</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Payment summary */}
+        <div className="bg-red-50 border border-red-100 rounded-xl p-4 space-y-1.5 text-sm">
+          <Row label="Customer" value={payment.user?.email ?? '—'} />
+          <Row label="Profile" value={`${payment.childProfile?.name ?? '—'}${payment.childProfile?.memberId ? ` (${payment.childProfile.memberId})` : ''}`} />
+          <Row label="Amount" value={<span className="font-semibold text-red-700">{fmt(payment.amount)}</span>} />
+          {payment.bankRef && <Row label="Bank Ref" value={<span className="font-mono">{payment.bankRef}</span>} />}
+        </div>
+
+        <p className="text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          ⚠ The profile will be reset to <strong>DRAFT</strong> status and the user will see the rejection reason on their dashboard.
+        </p>
+
+        {/* Reason dropdown */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Rejection Reason <span className="text-red-400">*</span></label>
+          <select
+            value={reasonType}
+            onChange={e => setReasonType(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-700 outline-none focus:border-red-400 transition bg-gray-50"
+          >
+            {REJECT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+
+        {/* Custom reason input when "Other" is selected */}
+        {reasonType === 'Other' && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Custom Reason <span className="text-red-400">*</span></label>
+            <textarea
+              value={customReason}
+              onChange={e => setCustomReason(e.target.value)}
+              rows={3}
+              placeholder="Describe the reason for rejection..."
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 resize-none outline-none focus:border-red-400 transition"
+            />
+          </div>
+        )}
+
+        {err && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{err}</p>}
+
+        {/* Actions */}
+        <div className="flex gap-3 pt-1">
+          <button onClick={onClose}
+            className="flex-1 border border-gray-200 text-gray-600 text-sm font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={loading || (reasonType === 'Other' && !customReason.trim())}
+            className="flex-1 bg-red-500 text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-red-600 transition disabled:opacity-60 flex items-center justify-center gap-2">
+            {loading ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : '✗'} Reject Payment
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -120,16 +225,17 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 export default function AdminPaymentsPage() {
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<'SUBSCRIPTION' | 'BOOST'>('SUBSCRIPTION');
   const [filter, setFilter] = useState('PENDING');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Payment | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Payment | null>(null);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
   const PER_PAGE = 10;
   const { fmt } = useCurrency();
 
   const load = () => {
     setLoading(true);
-    // Always load ALL payments so counts are accurate across all tabs
     adminApi.payments(undefined)
       .then((r) => setAllPayments(r.data ?? []))
       .catch(() => setAllPayments([]))
@@ -137,16 +243,26 @@ export default function AdminPaymentsPage() {
   };
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { setPage(1); }, [filter]);
+  useEffect(() => { setPage(1); }, [filter, typeFilter]);
 
-  // Client-side filter for the active tab
-  const payments = filter === 'ALL'
-    ? allPayments
-    : allPayments.filter(p => p.status === filter);
+  // Split by type
+  const subPayments  = allPayments.filter(p => p.purpose !== 'BOOST');
+  const boostPayments = allPayments.filter(p => p.purpose === 'BOOST');
+  const typePool = typeFilter === 'BOOST' ? boostPayments : subPayments;
+
+  // Status filter within the active type
+  const payments = filter === 'ALL' ? typePool : typePool.filter(p => p.status === filter);
 
   const handleDone = () => {
     setSelected(null);
     setToast({ text: '✅ Payment approved — profile is now active!', ok: true });
+    setTimeout(() => setToast(null), 6000);
+    load();
+  };
+
+  const handleRejectDone = () => {
+    setRejectTarget(null);
+    setToast({ text: '✗ Payment rejected — profile reset to DRAFT. User will see the reason.', ok: false });
     setTimeout(() => setToast(null), 6000);
     load();
   };
@@ -160,10 +276,15 @@ export default function AdminPaymentsPage() {
     return map[s] ?? 'bg-gray-100 text-gray-600';
   };
 
-  // Counts always from full dataset regardless of active tab
-  const pendingCount = allPayments.filter(p => p.status === 'PENDING').length;
-  const successCount = allPayments.filter(p => p.status === 'SUCCESS').length;
-  const failedCount  = allPayments.filter(p => p.status === 'FAILED').length;
+  // Counts scoped to the active type pool
+  const pendingCount = typePool.filter(p => p.status === 'PENDING').length;
+  const successCount = typePool.filter(p => p.status === 'SUCCESS').length;
+  const failedCount  = typePool.filter(p => p.status === 'FAILED').length;
+
+  // Overall pending counts for header badges
+  const totalSubPending   = subPayments.filter(p => p.status === 'PENDING').length;
+  const totalBoostPending = boostPayments.filter(p => p.status === 'PENDING').length;
+
   const totalPages = Math.ceil(payments.length / PER_PAGE);
   const pageData = payments.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -172,23 +293,23 @@ export default function AdminPaymentsPage() {
       {selected && (
         <ApproveModal payment={selected} onClose={() => setSelected(null)} onDone={handleDone} />
       )}
+      {rejectTarget && (
+        <RejectModal payment={rejectTarget} onClose={() => setRejectTarget(null)} onDone={handleRejectDone} />
+      )}
 
       <div className="font-poppins space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-[22px] sm:text-[26px] md:text-[30px] lg:text-[34px] xl:text-[37px] 2xl:text-[40px] font-poppins font-medium text-[#121514]">Payment Management</h1>
-            <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Review payment IDs and approve subscriptions</p>
+            <p className="text-[#121514AD]/68 title-sub-top mt-0.5">Review and approve subscription &amp; boost payments</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('PENDING')}`}>
-              {pendingCount} Pending
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1C3B35]/10 text-[#1C3B35] flex items-center gap-1.5">
+              💳 {totalSubPending} Subscription pending
             </span>
-            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('SUCCESS')}`}>
-              {successCount} Success
-            </span>
-            <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusBadge('FAILED')}`}>
-              {failedCount} Failed
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-[#DB9D30]/15 text-[#8B5E00] flex items-center gap-1.5">
+              ⚡ {totalBoostPending} Boost pending
             </span>
           </div>
         </div>
@@ -203,9 +324,9 @@ export default function AdminPaymentsPage() {
         {/* Pending alert banner */}
         {filter !== 'PENDING' && pendingCount > 0 && (
           <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            <span className="text-xl">⏳</span>
+            <span className="text-xl">{typeFilter === 'BOOST' ? '⚡' : '⏳'}</span>
             <p className="text-sm text-amber-800 font-medium">
-              {pendingCount} payment{pendingCount > 1 ? 's' : ''} awaiting approval.
+              {pendingCount} {typeFilter === 'BOOST' ? 'boost' : 'subscription'} payment{pendingCount > 1 ? 's' : ''} awaiting approval.
             </p>
             <button onClick={() => setFilter('PENDING')}
               className="ml-auto text-xs font-semibold text-amber-700 underline hover:no-underline">
@@ -216,8 +337,30 @@ export default function AdminPaymentsPage() {
 
         {/* Table card */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          {/* Filter tabs */}
-          <div className="flex border-b border-gray-100 px-4 pt-4 gap-1">
+
+          {/* ── Type switcher ── */}
+          <div className="px-4 pt-4 pb-0 flex gap-2">
+            {([{ key: 'SUBSCRIPTION', label: 'Subscriptions', icon: '💳', color: 'bg-[#1C3B35] text-white', inactive: 'bg-[#1C3B35]/8 text-[#1C3B35]' },
+               { key: 'BOOST',        label: 'Boosts',        icon: '⚡',      color: 'bg-[#DB9D30] text-white', inactive: 'bg-[#DB9D30]/10 text-[#8B5E00]' },
+            ] as const).map(t => (
+              <button key={t.key}
+                onClick={() => { setTypeFilter(t.key); setFilter('PENDING'); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  typeFilter === t.key ? t.color : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}>
+                <span>{t.icon}</span>
+                {t.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  typeFilter === t.key ? 'bg-white/25 text-white' : 'bg-white text-gray-500'
+                }`}>
+                  {t.key === 'SUBSCRIPTION' ? subPayments.length : boostPayments.length}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Status tabs ── */}
+          <div className="flex border-b border-gray-100 px-4 pt-3 gap-1">
             {STATUS_OPTIONS.map((s) => {
               const countMap: Record<string, number> = {
                 PENDING: pendingCount,
@@ -234,7 +377,7 @@ export default function AdminPaymentsPage() {
               return (
                 <button key={s} onClick={() => setFilter(s)}
                   className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-all ${filter === s
-                    ? 'bg-[#1C3B35] text-white'
+                    ? (typeFilter === 'BOOST' ? 'bg-[#DB9D30] text-white' : 'bg-[#1C3B35] text-white')
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}>
                   {s.charAt(0) + s.slice(1).toLowerCase()}
                   {s !== 'ALL' && (
@@ -269,7 +412,7 @@ export default function AdminPaymentsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    {['Payment ID', 'Customer', 'Profile', 'Amount', 'Method', 'Bank Ref / Gateway ID', 'Status', 'Date', 'Action'].map((h) => (
+                    {['Customer', 'Profile', 'Amount', 'Method', 'Bank Ref', 'Status', 'Date', 'Action'].map((h) => (
                       <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-gray-500 tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -277,23 +420,6 @@ export default function AdminPaymentsPage() {
                 <tbody className="divide-y divide-gray-50">
                   {pageData.map((p, i) => (
                     <tr key={p.id} className={`hover:bg-gray-50 transition ${i % 2 === 1 ? 'bg-[#FAFAFA]' : ''} ${p.status === 'PENDING' ? 'border-l-4 border-l-amber-400' : ''}`}>
-                      {/* Payment ID — full, copyable */}
-                      <td className="px-5 py-3.5">
-                        <div className="group relative">
-                          <span className="font-mono text-xs text-gray-500 cursor-text select-all"
-                            title={p.id}>
-                            {p.id.slice(0, 12)}…
-                          </span>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(p.id)}
-                            className="ml-1 opacity-0 group-hover:opacity-100 transition text-gray-300 hover:text-gray-500"
-                            title="Copy full ID">
-                            <svg className="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
                       <td className="px-5 py-3.5 text-gray-700 text-xs">{p.user?.email ?? '—'}</td>
                       <td className="px-5 py-3.5">
                         <p className="font-medium text-gray-800">{p.childProfile?.name ?? '—'}</p>
@@ -330,13 +456,22 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td className="px-5 py-3.5">
                         {p.status === 'PENDING' && (
-                          <button onClick={() => setSelected(p)}
-                            className="text-xs bg-[#1C3B35] text-white px-4 py-1.5 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1.5">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                            Approve
-                          </button>
+                          <div className="flex flex-col gap-1.5">
+                            <button onClick={() => setSelected(p)}
+                              className="text-xs bg-[#1C3B35] text-white px-3 py-1.5 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              Approve
+                            </button>
+                            <button onClick={() => setRejectTarget(p)}
+                              className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition font-semibold flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Reject
+                            </button>
+                          </div>
                         )}
                         {p.status === 'SUCCESS' && (
                           <div>
@@ -347,7 +482,12 @@ export default function AdminPaymentsPage() {
                           </div>
                         )}
                         {p.status === 'FAILED' && (
-                          <span className="text-xs text-red-500">✗ Failed</span>
+                          <div className="space-y-1">
+                            <span className="text-xs text-red-500 font-semibold">✗ Rejected</span>
+                            {p.rejectionReason && (
+                              <p className="text-[10px] text-red-400 max-w-[140px] leading-tight">{p.rejectionReason}</p>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

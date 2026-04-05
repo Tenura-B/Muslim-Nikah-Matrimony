@@ -2,10 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentService } from '../payment/payment.service';
-import { ApprovePaymentDto, CreatePackageDto, UpdateSiteSettingsDto } from './dto/admin.dto';
+import { ApprovePaymentDto, RejectPaymentDto, CreatePackageDto, UpdateSiteSettingsDto } from './dto/admin.dto';
 import { PaymentStatus, ProfileStatus } from '@prisma/client';
 
-export { ApprovePaymentDto, CreatePackageDto, UpdateSiteSettingsDto };
+export { ApprovePaymentDto, RejectPaymentDto, CreatePackageDto, UpdateSiteSettingsDto };
 
 @Injectable()
 export class AdminService {
@@ -51,10 +51,34 @@ export class AdminService {
     return { success: true, message: `Payment approved — profile activated for ${durationDays} days` };
   }
 
+  async rejectPayment(adminId: string, dto: RejectPaymentDto) {
+    const payment = await this.prisma.payment.findUnique({ where: { id: dto.paymentId } });
+    if (!payment) throw new NotFoundException({ success: false, message: 'Payment not found' });
+
+    await this.prisma.$transaction(async (tx) => {
+      // Mark payment as FAILED with the reason
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED', rejectionReason: dto.reason, approvedBy: adminId },
+      });
+      // Reset profile back to DRAFT so user can re-submit payment
+      await tx.childProfile.update({
+        where: { id: payment.childProfileId },
+        data: { status: 'DRAFT', rejectionReason: dto.reason },
+      });
+    });
+
+    this.logger.log(`Admin REJECTED payment: ${payment.id} — reason: ${dto.reason}`);
+    return { success: true, message: 'Payment rejected and profile reset to DRAFT' };
+  }
+
   async getAllPayments(status?: string) {
     const payments = await this.prisma.payment.findMany({
       where: status ? { status: status as PaymentStatus } : undefined,
-      include: { user: { select: { id: true, email: true } }, childProfile: { select: { id: true, name: true } } },
+      include: {
+        user: { select: { id: true, email: true } },
+        childProfile: { select: { id: true, name: true, memberId: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
     return { success: true, data: payments };
@@ -284,12 +308,30 @@ export class AdminService {
         siteDiscountLabel: dto.siteDiscountLabel ?? '',
         siteDiscountActive: dto.siteDiscountActive ?? false,
         platformCurrency: dto.platformCurrency ?? 'LKR',
+        whatsappContact: dto.whatsappContact ?? '+94 705 687 697',
+        bank1AccName: dto.bank1AccName ?? 'M T M Akram',
+        bank1AccNo: dto.bank1AccNo ?? '112054094468',
+        bank1BankName: dto.bank1BankName ?? 'Sampath Bank PLC',
+        bank1Branch: dto.bank1Branch ?? 'Ratmalana',
+        bank2AccName: dto.bank2AccName ?? 'M T M Akram',
+        bank2AccNo: dto.bank2AccNo ?? '89870069',
+        bank2BankName: dto.bank2BankName ?? 'BOC',
+        bank2Branch: dto.bank2Branch ?? 'Anuradhapura',
       } as any,
       update: {
         ...(dto.siteDiscountPct !== undefined && { siteDiscountPct: dto.siteDiscountPct }),
         ...(dto.siteDiscountLabel !== undefined && { siteDiscountLabel: dto.siteDiscountLabel }),
         ...(dto.siteDiscountActive !== undefined && { siteDiscountActive: dto.siteDiscountActive }),
         ...(dto.platformCurrency !== undefined && { platformCurrency: dto.platformCurrency }),
+        ...(dto.whatsappContact !== undefined && { whatsappContact: dto.whatsappContact }),
+        ...(dto.bank1AccName !== undefined && { bank1AccName: dto.bank1AccName }),
+        ...(dto.bank1AccNo !== undefined && { bank1AccNo: dto.bank1AccNo }),
+        ...(dto.bank1BankName !== undefined && { bank1BankName: dto.bank1BankName }),
+        ...(dto.bank1Branch !== undefined && { bank1Branch: dto.bank1Branch }),
+        ...(dto.bank2AccName !== undefined && { bank2AccName: dto.bank2AccName }),
+        ...(dto.bank2AccNo !== undefined && { bank2AccNo: dto.bank2AccNo }),
+        ...(dto.bank2BankName !== undefined && { bank2BankName: dto.bank2BankName }),
+        ...(dto.bank2Branch !== undefined && { bank2Branch: dto.bank2Branch }),
       } as any,
     });
     return { success: true, data: settings };

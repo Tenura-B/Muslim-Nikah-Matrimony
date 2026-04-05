@@ -15,7 +15,7 @@ export class UserService {
     return { success: true, data: safe };
   }
 
-  async updateMe(userId: string, data: { phone?: string; whatsappNumber?: string }) {
+  async updateMe(userId: string, data: { phone?: string; whatsappNumber?: string; phoneVisible?: boolean; whatsappVisible?: boolean }) {
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data,
