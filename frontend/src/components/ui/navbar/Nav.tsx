@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -87,10 +88,15 @@ const Nav = () => {
         <nav className=" backdrop-blur-md bg-[#4B7F73]/50 border border-white/15 rounded-full shadow-2xl shadow-black/30">
           <div className=" px-4 sm:px-6 lg:px-10">
             <div className="flex items-center justify-between h-16">
-              <Link href="/" className="flex items-center shrink-0">
-                <span className="text-white font-poppins text-[15px] sm:text-[16px] lg:text-[18px] font-semibold uppercase tracking-wide">
-                  Muslim Nikah
-                </span>
+              <Link href="/" className="flex items-center shrink-0" aria-label="Muslim Nikah home">
+                <Image
+                  src="/images/muslimLogo1.png"
+                  alt="Muslim Nikah"
+                  width={200}
+                  height={48}
+                  className="h-8 w-auto sm:h-9 lg:h-10 object-contain object-left"
+                  priority
+                />
               </Link>
 
               <div className="hidden xl:flex min-w-0 flex-1 items-center justify-center gap-3 xl:gap-5 2xl:gap-8">

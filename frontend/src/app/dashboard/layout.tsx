@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { subscriptionApi, profileApi } from '@/services/api';
 
-const MEMBER_LOGO_SRC = '/images/logo%201.png';
+const MEMBER_LOGO_SRC = '/images/muslimLogo1.png';
 
 const navItems = [
   {
@@ -182,7 +182,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             alt="Muslim Nikah"
             className="h-auto w-full max-w-[220px] object-contain object-left"
             width={220}
-            height={72}
+            height={44}
           />
         </Link>
         <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 md:text-sm">

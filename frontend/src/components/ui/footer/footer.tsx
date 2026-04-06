@@ -31,20 +31,20 @@ const Footer = () => {
           </div>
 
           {/* Right: Subscribe + Social */}
-          <div className="flex flex-col items-start lg:items-start gap-5">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-5 lg:w-auto lg:items-start">
             <p className="text-white font-medium text-[17px] sm:text-[18px] md:text-[19px] lg:text-[19px] xl:text-[23px] 2xl:text-[24px]  font-poppins">
               Subscribe
             </p>
-            <div className="flex flex-col items-start lg:items-end gap-5">
-            {/* Email input */}
-            <div className="flex items-center bg-white rounded-full overflow-hidden w-72 shadow-md">
+            <div className="flex w-full min-w-0 flex-col items-stretch gap-5 lg:items-end">
+            {/* Email input — full width on small screens, capped on large */}
+            <div className="flex w-full max-w-full min-w-0 items-center rounded-full bg-white shadow-md overflow-hidden sm:max-w-[18rem]">
               <input
                 type="email"
                 placeholder="Get updates"
-                className="flex-1 px-5 py-3 text-sm text-gray-700 outline-none bg-transparent font-poppins placeholder:text-gray-400"
+                className="min-w-0 flex-1 px-3 py-2.5 text-sm text-gray-700 outline-none bg-transparent font-poppins placeholder:text-gray-400 sm:px-5 sm:py-3"
               />
               <button
-                className="flex items-center justify-center w-11 h-11 m-0.5 rounded-full text-white shrink-0"
+                className="flex shrink-0 items-center justify-center w-10 h-10 m-0.5 rounded-full text-white sm:w-11 sm:h-11 touch-manipulation"
                 style={{ backgroundColor: "#DB9D30" }}
                 aria-label="Subscribe"
               >
