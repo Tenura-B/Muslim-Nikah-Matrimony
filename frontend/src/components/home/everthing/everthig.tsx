@@ -87,7 +87,7 @@ const EverythingSection = () => {
           </h2>
         </div>
 
-        <div className="mt-12 w-full">
+        <div className="mt-12 w-full mb-15 lg:mb-0">
           <EverythingFourCards />
         </div>
       </div>

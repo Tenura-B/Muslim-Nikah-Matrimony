@@ -12,7 +12,7 @@ const About = () => {
           alt="Left lantern"
           width={160}
           height={220}
-          className="h-auto w-20 object-contain sm:w-28 md:w-32 lg:w-40 xl:w-48 2xl:w-52"
+          className="h-[120px] sm:h-auto w-20 object-contain sm:w-28 md:w-32 lg:w-40 xl:w-48 2xl:w-52"
         />
       </div>
 
@@ -23,7 +23,7 @@ const About = () => {
           alt="Right lantern"
           width={160}
           height={220}
-          className="h-auto w-20 object-contain sm:w-28 md:w-32 lg:w-40 xl:w-48 2xl:w-52"
+          className="h-[120px] sm:h-auto w-20 object-contain sm:w-28 md:w-32 lg:w-40 xl:w-48 2xl:w-52"
         />
       </div>
 
