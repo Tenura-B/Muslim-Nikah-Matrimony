@@ -384,7 +384,7 @@ export default function CreateProfilePage() {
     } finally { setSaving(false); }
   };
 
-  const g2 = 'grid grid-cols-2 gap-4';
+  const g2 = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
   const stepDesc = [
     'Fill in personal details',
     'Where are you based?',
@@ -396,7 +396,7 @@ export default function CreateProfilePage() {
   return (
     <div className="min-h-screen bg-[#F5F7F5] font-poppins">
       {/* Top bar */}
-      <div className="bg-[#1C3B35] px-6 py-4 flex items-center gap-4 shadow-sm">
+      <div className="bg-[#1C3B35] px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 shadow-sm">
         <button onClick={() => router.push('/dashboard/profiles')}
           className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -409,27 +409,29 @@ export default function CreateProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
 
         {/* Step indicators */}
-        <div className="flex items-center justify-between mb-6 px-2">
-          {STEPS.map((label, i) => {
-            const done = i < step; const active = i === step;
-            return (
-              <div key={label} className="flex flex-col items-center gap-1.5 flex-1">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
-                  done ? 'bg-[#1C3B35] text-white' : active ? 'bg-white border-2 border-[#1C3B35] text-[#1C3B35]' : 'bg-white border-2 border-gray-200 text-gray-300'
-                }`}>
-                  {done
-                    ? <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                    : STEP_ICONS[i]}
+        <div className="overflow-x-auto pb-1">
+          <div className="flex items-center justify-between mb-6 px-2 min-w-[360px] sm:min-w-0">
+            {STEPS.map((label, i) => {
+              const done = i < step; const active = i === step;
+              return (
+                <div key={label} className="flex flex-col items-center gap-1.5 flex-1">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                    done ? 'bg-[#1C3B35] text-white' : active ? 'bg-white border-2 border-[#1C3B35] text-[#1C3B35]' : 'bg-white border-2 border-gray-200 text-gray-300'
+                  }`}>
+                    {done
+                      ? <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                      : STEP_ICONS[i]}
+                  </div>
+                  <span className={`text-[10px] font-semibold hidden sm:block ${active ? 'text-[#1C3B35]' : done ? 'text-[#1C3B35]/60' : 'text-gray-300'}`}>
+                    {label}
+                  </span>
                 </div>
-                <span className={`text-[10px] font-semibold hidden sm:block ${active ? 'text-[#1C3B35]' : done ? 'text-[#1C3B35]/60' : 'text-gray-300'}`}>
-                  {label}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         {/* Progress bar */}
@@ -441,12 +443,12 @@ export default function CreateProfilePage() {
 
         {/* Form card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-[#F0F4F2] border-b border-gray-100 px-6 py-4">
+          <div className="bg-[#F0F4F2] border-b border-gray-100 px-4 sm:px-6 py-4">
             <h2 className="font-bold text-[#1C3B35] text-base">{STEPS[step]}</h2>
             <p className="text-xs text-gray-500 mt-0.5">{stepDesc[step]}</p>
           </div>
 
-          <div className="px-6 py-6 space-y-4">
+          <div className="px-4 sm:px-6 py-5 sm:py-6 space-y-4">
 
             {/* ── Step 0: Personal Details ──────────────────────────────── */}
             {step === 0 && (
@@ -642,9 +644,9 @@ export default function CreateProfilePage() {
                     ['About Me', form.about ? form.about.substring(0, 60) + (form.about.length > 60 ? '…' : '') : ''],
                     ['Expectations', form.expectations ? form.expectations.substring(0, 60) + (form.expectations.length > 60 ? '…' : '') : ''],
                   ] as [string, string][]).filter(([, v]) => v).map(([k, v], i) => (
-                    <div key={k} className={`flex items-start justify-between px-4 py-2.5 gap-4 ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                    <div key={k} className={`flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-2.5 gap-1.5 sm:gap-4 ${i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
                       <span className="text-gray-400 text-xs font-medium shrink-0">{k}</span>
-                      <span className="font-semibold text-gray-700 text-xs text-right">{v}</span>
+                      <span className="font-semibold text-gray-700 text-xs text-left sm:text-right wrap-break-word">{v}</span>
                     </div>
                   ))}
                 </div>
@@ -658,21 +660,21 @@ export default function CreateProfilePage() {
           </div>
 
           {/* Footer navigation */}
-          <div className="px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-gray-50/50">
+          <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-between gap-3 bg-gray-50/50">
             <button
               onClick={() => { setStep(s => Math.max(0, s - 1)); setFieldErrors({}); }}
               disabled={step === 0}
-              className="px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-100 transition disabled:opacity-30"
+              className="w-full sm:w-auto px-5 py-2.5 border border-gray-200 text-gray-600 text-sm font-semibold rounded-xl hover:bg-gray-100 transition disabled:opacity-30"
             >← Back</button>
 
             {step < STEPS.length - 1 ? (
               <button onClick={handleNext}
-                className="px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition">
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition">
                 Next →
               </button>
             ) : (
               <button onClick={handleCreate} disabled={saving}
-                className="px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition disabled:opacity-50 flex items-center gap-2">
+                className="w-full sm:w-auto px-6 py-2.5 bg-[#1C3B35] text-white rounded-xl text-sm font-semibold hover:bg-[#15302a] transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {saving && <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>}
                 {saving ? 'Creating…' : '✓ Create Profile'}
               </button>

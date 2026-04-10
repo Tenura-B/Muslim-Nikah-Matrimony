@@ -28,7 +28,7 @@ export function AdminStatCard({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`relative w-full cursor-pointer overflow-hidden rounded-2xl p-5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+      className={`relative w-full cursor-pointer overflow-hidden rounded-2xl p-4 sm:p-5 text-left shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
         selected
           ? 'text-white ring-1 ring-black/5 hover:ring-black/10 focus-visible:ring-[#3d6b5d]'
           : 'border border-gray-100 bg-white text-gray-800 hover:border-gray-200 focus-visible:ring-[#1C3B35]/30'
@@ -47,24 +47,24 @@ export function AdminStatCard({
           />
         </>
       )}
-      <div className="relative flex items-start justify-between gap-4">
+      <div className="relative flex items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
           <p
-            className={`mb-1 truncate text-xs font-medium md:text-sm lg:text-base ${selected ? 'text-white/90' : 'text-gray-500'}`}
+            className={`mb-1 truncate text-xs font-medium sm:text-sm lg:text-base ${selected ? 'text-white/90' : 'text-gray-500'}`}
           >
             {label}
           </p>
           <p
-            className={`text-2xl font-semibold leading-none tracking-tight md:text-3xl lg:text-4xl ${selected ? 'text-white' : 'text-gray-800'}`}
+            className={`text-xl font-semibold leading-none tracking-tight sm:text-2xl md:text-3xl lg:text-4xl ${selected ? 'text-white' : 'text-gray-800'}`}
           >
             {value}
           </p>
           {sub && (
-            <p className={`mt-2 text-[10px] md:text-[12px] ${selected ? 'text-white/75' : 'text-gray-400'}`}>{sub}</p>
+            <p className={`mt-2 text-[10px] sm:text-[11px] md:text-[12px] ${selected ? 'text-white/75' : 'text-gray-400'}`}>{sub}</p>
           )}
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-md">
-          <Icon className={`h-5 w-5 ${selected ? 'text-[#3d6b5d]' : 'text-[#1C3B35]'}`} strokeWidth={2} aria-hidden />
+        <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-md">
+          <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${selected ? 'text-[#3d6b5d]' : 'text-[#1C3B35]'}`} strokeWidth={2} aria-hidden />
         </div>
       </div>
     </button>

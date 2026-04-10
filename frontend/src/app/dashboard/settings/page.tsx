@@ -211,12 +211,12 @@ export default function UserSettingsPage() {
             {/* Email — read-only */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Email Address</label>
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5">
+              <div className="flex flex-wrap items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5">
                 <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                   <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                 </svg>
-                <span className="text-sm text-gray-500">{email}</span>
-                <span className="ml-auto text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium">Read-only</span>
+                <span className="min-w-0 flex-1 break-all text-sm text-gray-500">{email}</span>
+                <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full font-medium shrink-0 sm:ml-auto">Read-only</span>
               </div>
               <p className="text-[11px] text-gray-400">Email cannot be changed. Contact support if needed.</p>
             </div>

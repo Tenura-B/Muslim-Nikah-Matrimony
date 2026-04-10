@@ -30,7 +30,7 @@ const SafetyCard = ({ Icon, title, description }: SafetyCardProps) => {
             </div>
           </div>
 
-          <h3 className="mt-4 font-poppins  font-medium subtitle text-white h-auto lg:h-15 xl:h-auto ">
+          <h3 className="mt-4 font-poppins  font-medium subtitle text-white h-auto lg:h-15 xl:h-auto whitespace-nowrap ">
             {title}
           </h3>
           <p className="mt-3 font-aref-ruqaa-ink paragraph text-white h-auto lg:h-20 ">

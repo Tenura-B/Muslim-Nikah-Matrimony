@@ -394,16 +394,16 @@ export default function SubscriptionPage() {
       )}
 
       {/* Active Plan Banner */}
-      <div className="bg-gradient-to-br from-[#1B6B4A] to-[#2d9966] rounded-2xl p-6 text-white flex items-center justify-between shadow-sm">
-        <div>
+      <div className="bg-gradient-to-br from-[#1B6B4A] to-[#2d9966] rounded-2xl p-4 sm:p-6 text-white flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">Current Plan</p>
-          <p className="font-bold text-2xl">{activePlan ? activePlan.name : 'Standard Plan'}</p>
-          <p className="text-white/70 text-sm mt-1">
+          <p className="font-bold text-xl sm:text-2xl break-words">{activePlan ? activePlan.name : 'Standard Plan'}</p>
+          <p className="text-white/70 text-sm mt-1 leading-relaxed">
             {activePlan?.durationDays ? `${activePlan.durationDays}-day` : '30-day'} access · Full visibility · Unlimited messaging
           </p>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-3xl font-extrabold">{fmt(activePlan ? activePlan.price : 29.99)}</p>
+        <div className="shrink-0 self-start text-left sm:self-auto sm:text-right">
+          <p className="text-2xl sm:text-3xl font-extrabold">{fmt(activePlan ? activePlan.price : 29.99)}</p>
           <p className="text-white/60 text-xs mt-1">per profile / {activePlan?.durationDays ?? 30} days</p>
         </div>
       </div>

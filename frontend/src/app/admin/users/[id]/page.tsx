@@ -68,31 +68,31 @@ export default function ViewUserPage() {
   );
 
   return (
-    <div className="font-poppins space-y-6 max-w-4xl mx-auto">
+    <div className="font-poppins space-y-6 max-w-7xl mx-auto w-full">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-400">
+      <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400 min-w-0">
         <Link href="/admin/users" className="hover:text-[#1C3B35] transition font-medium">Users</Link>
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <polyline points="9 18 15 12 9 6" />
         </svg>
-        <span className="text-gray-700 font-medium truncate">{user.email}</span>
+        <span className="text-gray-700 font-medium truncate min-w-0">{user.email}</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0 ${user.role === 'ADMIN' ? 'bg-purple-600' : 'bg-[#1C3B35]'}`}>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className={`h-14 w-14 rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0 ${user.role === 'ADMIN' ? 'bg-purple-600' : 'bg-[#1C3B35]'}`}>
             {user.email[0].toUpperCase()}
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-[#121514]">{user.email.split('@')[0]}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{user.email}</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-semibold text-[#121514] truncate">{user.email.split('@')[0]}</h1>
+            <p className="text-sm text-gray-400 mt-0.5 truncate">{user.email}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full sm:w-auto flex-col sm:flex-row gap-2">
           <Link
             href={`/admin/users/${user.id}/edit`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1C3B35] text-white text-sm font-semibold hover:bg-[#152d28] transition shadow-sm"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1C3B35] text-white text-sm font-semibold hover:bg-[#152d28] transition shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -102,16 +102,16 @@ export default function ViewUserPage() {
           </Link>
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
           >
             ← Back
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Account Info */}
-        <div className="lg:col-span-1 space-y-5">
+        <div className="lg:col-span-4 space-y-5">
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
               <svg className="w-4 h-4 text-[#1C3B35]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -159,7 +159,7 @@ export default function ViewUserPage() {
         </div>
 
         {/* Profiles list */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-8">
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -182,9 +182,9 @@ export default function ViewUserPage() {
             ) : (
               <div className="divide-y divide-gray-50">
                 {user.childProfiles.map((p) => (
-                  <div key={p.id} className="px-5 py-4 flex items-center gap-4 hover:bg-gray-50 transition">
+                  <div key={p.id} className="px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:bg-gray-50 transition">
                     {/* Avatar */}
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0 ${p.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 ${p.gender === 'MALE' ? 'bg-blue-500' : 'bg-pink-500'}`}>
                       {p.name[0].toUpperCase()}
                     </div>
                     {/* Info */}
@@ -198,7 +198,7 @@ export default function ViewUserPage() {
                       </p>
                     </div>
                     {/* Status badges */}
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0 w-full sm:w-auto">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${statusColor[p.status] ?? 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                         {p.status.replace('_', ' ')}
                       </span>
@@ -223,10 +223,10 @@ export default function ViewUserPage() {
 // Helper component for InfoRow with children
 function InfoRow({ label, value, children }: { label: string; value?: string | null; children?: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-50 last:border-0">
-      <span className="w-36 shrink-0 text-xs font-semibold text-gray-400 uppercase tracking-wide pt-0.5">{label}</span>
+    <div className="flex flex-col sm:flex-row items-start gap-1 sm:gap-3 py-3 border-b border-gray-50 last:border-0">
+      <span className="w-auto sm:w-36 shrink-0 text-xs font-semibold text-gray-400 uppercase tracking-wide pt-0.5">{label}</span>
       {children ?? (
-        <span className="text-sm text-gray-800 font-medium">
+        <span className="text-sm text-gray-800 font-medium break-all sm:break-normal">
           {value || <span className="text-gray-300 italic">Not set</span>}
         </span>
       )}

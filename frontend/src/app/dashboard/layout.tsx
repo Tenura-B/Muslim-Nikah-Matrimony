@@ -193,7 +193,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             height={44}
           />
         </Link>
-        <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 md:text-sm">
+        <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 lg:text-sm">
           Member Dashboard
         </p>
       </div>
@@ -261,15 +261,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#F4F6F9] font-poppins md:gap-5 md:p-3">
+    <div className="flex min-h-screen bg-[#F4F6F9] font-poppins lg:gap-5 lg:p-3">
       {/* Desktop sidebar — same shell as admin */}
-      <aside className="hidden w-64 shrink-0 flex-col rounded-[40px] bg-white p-8 shadow-sm ring-1 ring-black/5 md:flex md:min-h-[calc(100vh-2.5rem)]">
+      <aside className="hidden w-64 shrink-0 flex-col rounded-[40px] bg-white p-8 shadow-sm ring-1 ring-black/5 lg:flex lg:min-h-[calc(100vh-2.5rem)]">
         <SidebarInner />
       </aside>
 
       {/* Mobile drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
@@ -283,19 +283,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       )}
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-3.5 sm:px-8 md:rounded-[40px]">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3.5 sm:px-6 xl:px-8 lg:rounded-[40px]">
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="shrink-0 rounded-xl p-2 text-gray-500 transition hover:bg-gray-50 md:hidden"
+              className="shrink-0 rounded-xl p-2 text-gray-500 transition hover:bg-gray-50 lg:hidden"
               aria-label="Open menu"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
               </svg>
             </button>
-            <div className="hidden min-w-0 items-center gap-2 text-sm text-gray-400 md:flex">
+            <div className="hidden min-w-0 items-center gap-2 text-sm text-gray-400 xl:flex">
               <span>Member</span>
               <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <polyline points="9 18 15 12 9 6" />
@@ -318,11 +318,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1C3B35] text-sm font-bold text-white">
                 {user?.email?.[0]?.toUpperCase() ?? 'U'}
               </div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-semibold leading-none text-gray-800 md:text-sm">
+              <div className="hidden xl:block">
+                <p className="text-xs font-semibold leading-none text-gray-800 lg:text-sm">
                   {user?.email?.split('@')[0] ?? 'Member'}
                 </p>
-                <p className="mt-0.5 text-[10px] text-gray-400 md:text-[12px]">{user?.email ?? ''}</p>
+                <p className="mt-0.5 text-[10px] text-gray-400 lg:text-[12px]">{user?.email ?? ''}</p>
               </div>
               <button
                 type="button"
@@ -335,14 +335,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <polyline points="16 17 21 12 16 7" strokeLinecap="round" strokeLinejoin="round" />
                   <line x1="21" y1="12" x2="9" y2="12" strokeLinecap="round" />
                 </svg>
-                <span className="hidden sm:inline">Log out</span>
+                <span className="hidden xl:inline">Log out</span>
               </button>
             </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 md:px-8 md:py-7">{children}</div>
+          <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
         </main>
       </div>
     </div>

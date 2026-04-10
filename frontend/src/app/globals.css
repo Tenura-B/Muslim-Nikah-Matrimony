@@ -159,3 +159,22 @@
 .margin-y {
   @apply my-[20px] sm:my-[30px] md:my-[40px] lg:my-[50px] xl:my-[55px] 2xl:my-[60px] ;
 }
+
+.dashboard-table-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dashboard-table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.dashboard-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard-table-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}

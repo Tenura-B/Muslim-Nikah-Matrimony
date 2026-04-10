@@ -55,7 +55,7 @@ const ProfilesHeader = () => {
           Follow a trusted path built on faith, privacy, and family values.
         </p>
         <h1 ref={headingRef} className="title font-poppins font-medium text-white leading-tight max-w-4xl">
-          Your Journey Towards a{' '}
+          Your Journey Towards{' '}
           <br />
           <span className="font-aref-ruqaa-ink font-bold text-[#DB9D30]">Blessed</span> Match
         </h1>

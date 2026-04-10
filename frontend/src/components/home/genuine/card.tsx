@@ -114,85 +114,106 @@ const FilterBar = ({
 
     return (
         <div className="w-full mt-8 mb-2">
-            <div className="bg-white/80 backdrop-blur-sm border border-white shadow-lg rounded-2xl px-4 py-4 flex flex-wrap gap-3 items-end justify-center">
+            <div className="rounded-2xl border border-[#dbe6e1] bg-white shadow-sm px-4 py-4 sm:px-5 sm:py-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    {/* Age range */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-semibold text-[#1C3B35] uppercase tracking-wide font-poppins">Age Range</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={ageMin}
+                                max={ageMax - 1}
+                                placeholder={String(ageMin)}
+                                value={filters.ageMin}
+                                onChange={e => set('ageMin', e.target.value)}
+                                className="h-10 w-full border border-gray-200 rounded-xl px-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] bg-white transition placeholder-gray-300"
+                            />
+                            <span className="text-gray-300 text-sm font-bold">-</span>
+                            <input
+                                type="number"
+                                min={ageMin + 1}
+                                max={ageMax}
+                                placeholder={String(ageMax)}
+                                value={filters.ageMax}
+                                onChange={e => set('ageMax', e.target.value)}
+                                className="h-10 w-full border border-gray-200 rounded-xl px-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] bg-white transition placeholder-gray-300"
+                            />
+                        </div>
+                    </div>
 
-
-
-                {/* Marital Status */}
-                <div className="flex flex-col gap-1 min-w-[140px]">
-                    <label className="text-[10px] font-semibold text-[#1C3B35]/70 uppercase tracking-wider font-poppins">Marital Status</label>
-                    <select
-                        value={filters.maritalStatus}
-                        onChange={e => set('maritalStatus', e.target.value)}
-                        className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#DB9D30]/40 focus:border-[#DB9D30] bg-white transition appearance-none cursor-pointer"
-                    >
-                        {MARITAL_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Divider */}
-                <div className="hidden sm:block w-px h-8 bg-gray-200 self-center" />
-
-                {/* Country */}
-                <div className="flex flex-col gap-1 min-w-[130px]">
-                    <label className="text-[10px] font-semibold text-[#1C3B35]/70 uppercase tracking-wider font-poppins">Country</label>
-                    {countries.length > 0 ? (
+                    {/* Marital Status */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] tex font-semibold text-[#1C3B35] uppercase tracking-wide font-poppins">Marital Status</label>
                         <select
-                            value={filters.country}
-                            onChange={e => set('country', e.target.value)}
-                            className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#DB9D30]/40 focus:border-[#DB9D30] bg-white transition appearance-none cursor-pointer"
+                            value={filters.maritalStatus}
+                            onChange={e => set('maritalStatus', e.target.value)}
+                            className="h-10 border border-gray-200 rounded-xl px-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] bg-white transition appearance-none cursor-pointer"
                         >
-                            <option value="">Any Country</option>
-                            {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                            {MARITAL_OPTIONS.map(o => (
+                                <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
                         </select>
-                    ) : (
-                        <input
-                            type="text"
-                            placeholder="Any country"
-                            value={filters.country}
-                            onChange={e => set('country', e.target.value)}
-                            className="border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#DB9D30]/40 focus:border-[#DB9D30] bg-white transition placeholder-gray-300"
-                        />
-                    )}
+                    </div>
+
+                    {/* Country */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] font-semibold text-[#1C3B35] uppercase tracking-wide font-poppins">Country</label>
+                        {countries.length > 0 ? (
+                            <select
+                                value={filters.country}
+                                onChange={e => set('country', e.target.value)}
+                                className="h-10 border border-gray-200 rounded-xl px-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] bg-white transition appearance-none cursor-pointer"
+                            >
+                                <option value="">Any Country</option>
+                                {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        ) : (
+                            <input
+                                type="text"
+                                placeholder="Any country"
+                                value={filters.country}
+                                onChange={e => set('country', e.target.value)}
+                                className="h-10 border border-gray-200 rounded-xl px-3 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] bg-white transition placeholder-gray-300"
+                            />
+                        )}
+                    </div>
+
+                    {/* City — disabled until country is selected */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className={`text-[11px] font-semibold uppercase tracking-wide font-poppins ${filters.country ? 'text-[#1C3B35]' : 'text-gray-300'}`}>City</label>
+                        <select
+                            value={filters.city}
+                            onChange={e => set('city', e.target.value)}
+                            disabled={!filters.country}
+                            className={`h-10 border rounded-xl px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1C3B35]/20 focus:border-[#1C3B35] appearance-none transition ${
+                                filters.country
+                                    ? 'border-gray-200 text-gray-700 bg-white cursor-pointer'
+                                    : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed'
+                            }`}
+                        >
+                            <option value="">{filters.country ? 'Any City' : 'Select country first'}</option>
+                            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+
+                    {/* Clear button area */}
+                    <div className="flex items-end">
+                        {hasActive ? (
+                            <button
+                                onClick={onReset}
+                                className="h-10 w-full inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-[#1C3B35] border border-[#1C3B35]/25 bg-[#EAF2EE] hover:bg-[#dcebe4] rounded-xl transition font-poppins"
+                            >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Clear Filters
+                            </button>
+                        ) : (
+                            <div className="hidden lg:block h-10 w-full" />
+                        )}
+                    </div>
                 </div>
-
-                {/* Divider */}
-                <div className="hidden sm:block w-px h-8 bg-gray-200 self-center" />
-
-                {/* City — disabled until country is selected */}
-                <div className="flex flex-col gap-1 min-w-[130px]">
-                    <label className={`text-[10px] font-semibold uppercase tracking-wider font-poppins ${
-                        filters.country ? 'text-[#1C3B35]/70' : 'text-gray-300'
-                    }`}>City</label>
-                    <select
-                        value={filters.city}
-                        onChange={e => set('city', e.target.value)}
-                        disabled={!filters.country}
-                        className={`border rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#DB9D30]/40 focus:border-[#DB9D30] appearance-none transition ${
-                            filters.country
-                                ? 'border-gray-200 text-gray-700 bg-white cursor-pointer'
-                                : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed'
-                        }`}
-                    >
-                        <option value="">{filters.country ? 'Any City' : 'Select country first'}</option>
-                        {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                </div>
-
-                {/* Reset */}
-                {hasActive && (
-                    <button
-                        onClick={onReset}
-                        className="self-end flex items-center gap-1.5 text-xs font-semibold text-[#DB9D30] border border-[#DB9D30]/40 bg-[#DB9D30]/10 hover:bg-[#DB9D30]/20 px-3 py-2 rounded-xl transition font-poppins"
-                    >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Clear
-                    </button>
-                )}
             </div>
         </div>
     );

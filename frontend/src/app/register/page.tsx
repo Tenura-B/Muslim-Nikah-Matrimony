@@ -552,106 +552,10 @@ const stripDigitsOnPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
   document.execCommand('insertText', false, text);
 };
 
+/** Sentinel for optional “no country filter”; avoids a duplicate empty <option value=""> */
+const LOOKING_COUNTRY_NO_PREF = '__looking_country_no_pref__';
 
-// ── Multi-Country Select ──────────────────────────────────────────────────────
-function MultiCountrySelect({
-  label, options, selected, onChange, optional,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onChange: (newSelected: string[]) => void;
-  optional?: boolean;
-}) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-  const dropRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const toggle = (country: string) => {
-    if (selected.includes(country)) {
-      onChange(selected.filter((c) => c !== country));
-    } else {
-      onChange([...selected, country]);
-    }
-  };
-
-  const filtered = options.filter((c) => c.toLowerCase().includes(search.toLowerCase()));
-
-  const displayLabel =
-    selected.length === 0 ? 'Any country' :
-    selected.length === 1 ? selected[0] :
-    `${selected.length} countries selected`;
-
-  return (
-    <div ref={dropRef} className="relative">
-      <label className="text-sm font-medium text-gray-600">
-        {label}{optional && <span className="text-gray-400 text-xs ml-1">(optional)</span>}
-      </label>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`mt-1 w-full flex items-center justify-between rounded-lg border bg-white px-4 py-2.5 text-sm text-left shadow-sm outline-none transition ${open ? 'border-[#1B6B4A] ring-2 ring-[#1B6B4A]/20' : 'border-gray-200'}`}
-      >
-        <span className={selected.length === 0 ? 'text-gray-400' : 'text-gray-700 font-medium'}>
-          {displayLabel}
-        </span>
-        <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </button>
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {selected.map((c) => (
-            <span key={c} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1B6B4A]/10 text-[#1B6B4A] text-xs font-semibold">
-              {c}
-              <button type="button" onClick={() => toggle(c)} className="hover:text-red-500 transition">×</button>
-            </span>
-          ))}
-        </div>
-      )}
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-100">
-            <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search country…" className="w-full text-sm outline-none bg-transparent text-gray-700 placeholder:text-gray-400" autoFocus />
-          </div>
-          <ul className="max-h-52 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-4 py-3 text-xs text-gray-400 text-center">No countries found</li>
-            ) : filtered.map((c) => {
-              const checked = selected.includes(c);
-              return (
-                <li key={c}>
-                  <button type="button" onClick={() => toggle(c)} className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-left transition hover:bg-gray-50 ${checked ? 'text-[#1B6B4A] font-semibold' : 'text-gray-700'}`}>
-                    <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${checked ? 'bg-[#1B6B4A] border-[#1B6B4A]' : 'border-gray-300'}`}>
-                      {checked && (<svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>)}
-                    </span>
-                    {c}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          {selected.length > 0 && (
-            <div className="border-t border-gray-100 px-4 py-2 flex items-center justify-between">
-              <span className="text-xs text-gray-400">{selected.length} selected</span>
-              <button type="button" onClick={() => onChange([])} className="text-xs text-red-500 font-semibold hover:underline">Clear all</button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Step5({ data, onChange, lookingFor, setLookingFor, agreedTerms, setAgreedTerms, countryPrefSelected, setCountryPrefSelected }: {
+function Step5({ data, onChange, lookingFor, setLookingFor, agreedTerms, setAgreedTerms }: {
   data: Record<string, string>;
   onChange: (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement | HTMLTextAreaElement>) => void;
   lookingFor: string;
@@ -665,8 +569,22 @@ function Step5({ data, onChange, lookingFor, setLookingFor, agreedTerms, setAgre
   React.useEffect(() => { setMasterData(loadMasterData()); }, []);
 
   const countryOptions = masterData
-    ? masterData.countries.map(c => c.name)
-    : ['Sri Lanka','United Kingdom','Australia','Canada','UAE','Saudi Arabia','Qatar','USA','Malaysia','Other'];
+    ? masterData.countries.map((c) => c.name)
+    : ['Sri Lanka', 'United Kingdom', 'Australia', 'Canada', 'UAE', 'Saudi Arabia', 'Qatar', 'USA', 'Malaysia', 'Other'];
+
+  const storedPref = data.countryPreference?.trim();
+  const normalizedPref =
+    !storedPref || storedPref === 'Any Country' ? '' : storedPref;
+  const countryPrefSelectValue = normalizedPref
+    ? normalizedPref
+    : LOOKING_COUNTRY_NO_PREF;
+
+  const handleCountryPreferenceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const v = e.target.value === LOOKING_COUNTRY_NO_PREF ? '' : e.target.value;
+    onChange({
+      target: { name: 'countryPreference', value: v },
+    } as React.ChangeEvent<HTMLSelectElement>);
+  };
 
   return (
     <div>
@@ -675,14 +593,26 @@ function Step5({ data, onChange, lookingFor, setLookingFor, agreedTerms, setAgre
 
       {/* ── Looking Country ───────────────────────────────────── */}
       <div className="mt-6 flex flex-col gap-1">
-        <MultiCountrySelect
-          label="Looking Country"
-          options={countryOptions}
-          selected={countryPrefSelected}
-          onChange={setCountryPrefSelected}
-          optional
-        />
-        <p className="text-xs text-gray-400 mt-0.5">Only profiles from selected countries will be shown to you in browse results.</p>
+        <label className="text-sm font-medium text-gray-600">
+          Looking Country <span className="text-gray-400 text-xs font-normal">(optional)</span>
+        </label>
+        <div className="relative">
+          <select
+            name="countryPreference"
+            value={countryPrefSelectValue}
+            onChange={handleCountryPreferenceChange}
+            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-sm outline-none focus:border-[#1B6B4A] focus:ring-2 focus:ring-[#1B6B4A]/20 transition"
+          >
+            <option value={LOOKING_COUNTRY_NO_PREF}>No preference</option>
+            {countryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">Only profiles from this country will be shown to you in browse results.</p>
       </div>
 
       <div className="mt-4 flex flex-col gap-1">
@@ -930,7 +860,7 @@ export default function RegisterPage() {
           : '';
 
         // Build expectations text
-        const countryPref = countryPrefSelected.length > 0 ? countryPrefSelected.join(', ') : '';
+        const countryPref = formData.countryPreference?.trim() || '';
         let expParts: string[] = [];
         expParts.push(`Looking for a ${gender === 'Female' ? 'righteous, caring and responsible' : 'pious, educated and family-oriented'} Muslim partner`);
         if (countryPref) expParts.push(`preferably from ${countryPref}`);

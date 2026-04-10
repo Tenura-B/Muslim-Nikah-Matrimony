@@ -25,9 +25,8 @@ const MissionSection = () => {
             <div className="flex flex-wrap items-center gap-4">
               <Link href="/register">
                 <MainButton
-                  px="px-8"
-                  py="py-3"
-                  className="text-base font-medium font-poppins"
+                  
+                  className="text-base px-4 py-3 sm:px-8 sm:py-3  font-medium font-poppins"
                   type="button"
                 >
                   Create Profile
@@ -36,7 +35,7 @@ const MissionSection = () => {
 
               <Link
                 href="/packages"
-                className="border border-[#397466] text-[#DB9D30] font-semibold px-8 py-3 rounded-full text-base font-poppins hover:bg-[#397466]/10 transition-all duration-200"
+                className="border border-[#397466] text-[#DB9D30] font-semibold px-4 py-2.5 sm:px-8 sm:py-3 rounded-full text-base font-poppins hover:bg-[#397466]/10 transition-all duration-200"
               >
                 View All Plans
               </Link>

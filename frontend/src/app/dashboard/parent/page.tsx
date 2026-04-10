@@ -108,7 +108,7 @@ export default function ParentDashboard() {
       </div>
 
       {/* ── Stat cards (same as admin dashboard) ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-1 md:grid-cols-2 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {statItems.map((item) => (
           <AdminStatCard
             key={item.label}
@@ -174,20 +174,23 @@ export default function ParentDashboard() {
 
       {/* ── Family Profiles Table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
           <div>
             <h2 className="font-medium font-poppins text-[#121514] subtitle">Family Profiles</h2>
             <p className="text-xs text-gray-400 mt-0.5">Manage your registered profiles</p>
           </div>
           <Link href="/dashboard/profiles"
-            className="text-xs bg-[#1C3B35] text-white px-4 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1.5">
+            className="text-xs bg-[#1C3B35] text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-[#15302a] transition font-semibold flex items-center gap-1.5 shrink-0">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Add Profile
           </Link>
         </div>
-        <div className="overflow-x-auto">
+        <div className="px-4 sm:px-6 pt-2 pb-1 text-[11px] text-gray-400 sm:hidden">
+          Swipe left/right to view all columns
+        </div>
+        <div className="dashboard-table-scroll overflow-x-auto">
           {profiles.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-gray-400">
               <span className="text-4xl mb-3">👨‍👩‍👧‍👦</span>
@@ -195,7 +198,7 @@ export default function ParentDashboard() {
               <p className="text-xs mt-1">Add your first family member to get started</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   {['Member ID', 'Name', 'Gender', 'Status', 'Plan', 'Created', 'Action'].map((h) => (
@@ -270,18 +273,21 @@ export default function ParentDashboard() {
       {/* ── Recent Payments ── */}
       {payments.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
             <div>
               <h2 className="font-medium font-poppins text-[#121514] subtitle">Recent Payments</h2>
               <p className="text-xs text-gray-400 mt-0.5">Your latest payment history</p>
             </div>
             <Link href="/dashboard/subscription"
-              className="text-xs text-[#1C3B35] font-semibold hover:underline">
+              className="text-xs text-[#1C3B35] font-semibold hover:underline shrink-0">
               View all →
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="px-4 sm:px-6 pt-2 pb-1 text-[11px] text-gray-400 sm:hidden">
+            Swipe left/right to view all columns
+          </div>
+          <div className="dashboard-table-scroll overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   {['Payment ID', 'Amount', 'Method', 'Status', 'Date'].map(h => (
