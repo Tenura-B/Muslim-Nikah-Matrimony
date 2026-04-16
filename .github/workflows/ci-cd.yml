@@ -44,6 +44,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
           NEXT_PUBLIC_SOCKET_URL: ${{ secrets.NEXT_PUBLIC_SOCKET_URL }}
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
         run: npm run build
 
   docker:
@@ -84,6 +85,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_SOCKET_URL=${{ secrets.NEXT_PUBLIC_SOCKET_URL }}
+            NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
@@ -115,12 +117,14 @@ jobs:
           BREVO_SENDER_EMAIL: ${{ secrets.BREVO_SENDER_EMAIL }}
           CONTACT_TO_EMAIL: ${{ secrets.CONTACT_TO_EMAIL }}
           CONTACT_AUTOREPLY: ${{ secrets.CONTACT_AUTOREPLY }}
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: APP_DIR,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,BACKEND_IMAGE,FRONTEND_IMAGE,IMAGE_TAG,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,JWT_SECRET,JWT_EXPIRES_IN,FRONTEND_URL,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SOCKET_URL,BREVO_API_KEY,BREVO_SENDER_EMAIL,CONTACT_TO_EMAIL,CONTACT_AUTOREPLY
+          envs: APP_DIR,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,BACKEND_IMAGE,FRONTEND_IMAGE,IMAGE_TAG,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,JWT_SECRET,JWT_EXPIRES_IN,FRONTEND_URL,NEXT_PUBLIC_API_URL,NEXT_PUBLIC_SOCKET_URL,BREVO_API_KEY,BREVO_SENDER_EMAIL,CONTACT_TO_EMAIL,CONTACT_AUTOREPLY,NEXT_PUBLIC_RECAPTCHA_SITE_KEY,RECAPTCHA_SECRET_KEY
           script: |
             set -e
             mkdir -p "$APP_DIR"
@@ -139,6 +143,8 @@ jobs:
             BREVO_SENDER_EMAIL=$BREVO_SENDER_EMAIL
             CONTACT_TO_EMAIL=$CONTACT_TO_EMAIL
             CONTACT_AUTOREPLY=$CONTACT_AUTOREPLY
+            NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+            RECAPTCHA_SECRET_KEY=$RECAPTCHA_SECRET_KEY
             EOF
 
             cat > docker-compose.prod.yml <<EOF
@@ -192,6 +198,8 @@ jobs:
                   BREVO_SENDER_EMAIL: \${BREVO_SENDER_EMAIL}
                   CONTACT_TO_EMAIL: \${CONTACT_TO_EMAIL}
                   CONTACT_AUTOREPLY: \${CONTACT_AUTOREPLY}
+                  NEXT_PUBLIC_RECAPTCHA_SITE_KEY: \${NEXT_PUBLIC_RECAPTCHA_SITE_KEY}
+                  RECAPTCHA_SECRET_KEY: \${RECAPTCHA_SECRET_KEY}
                 depends_on:
                   - backend
                 networks:

@@ -2,8 +2,46 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Script from "next/script";
 import { CheckCircle2, X } from "lucide-react";
 import MainButton from "@/components/ui/mainbtn";
+import { RECAPTCHA_V3_ACTION } from "@/lib/recaptcha";
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, opts: { action: string }) => Promise<string>;
+    };
+  }
+}
+
+const RECAPTCHA_SITE_KEY =
+  typeof process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY === "string"
+    ? process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY.trim()
+    : "";
+
+function getRecaptchaToken(siteKey: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(null);
+      return;
+    }
+    const g = window.grecaptcha;
+    if (!g?.ready) {
+      resolve(null);
+      return;
+    }
+    g.ready(async () => {
+      try {
+        const token = await g.execute(siteKey, { action: RECAPTCHA_V3_ACTION });
+        resolve(typeof token === "string" && token.length > 0 ? token : null);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
 
 const WhatsAppIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 lg:h-7 lg:w-7 xl:h-8 xl:w-8 2xl:h-8 2xl:w-8">
@@ -58,6 +96,8 @@ function isValidPhoneOptional(phone: string) {
   const d = phoneDigitsOnly(t);
   return /^\d+$/.test(d) && d.length >= 8 && d.length <= 15;
 }
+
+const MIN_MESSAGE_CHARS = 5;
 
 type ToastState = {
   variant: "success" | "error";
@@ -133,6 +173,7 @@ export default function ContactFormSection() {
 
   const [emailError, setEmailError] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [messageError, setMessageError] = useState("");
 
   const [status, setStatus] = useState<"idle" | "submitting">("idle");
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -143,7 +184,7 @@ export default function ContactFormSection() {
     const namesOk = firstName.trim() && lastName.trim();
     const emailOk = email.trim() && isValidEmail(email);
     const phoneOk = isValidPhoneOptional(phone);
-    const msgOk = message.trim().length >= 5;
+    const msgOk = message.trim().length >= MIN_MESSAGE_CHARS;
     return Boolean(namesOk && emailOk && phoneOk && msgOk && status !== "submitting");
   }, [email, firstName, lastName, message, phone, status]);
 
@@ -168,6 +209,19 @@ export default function ContactFormSection() {
       setPhoneError("");
     }
 
+    const msg = message.trim();
+    if (!msg) {
+      setMessageError("Message is required.");
+      ok = false;
+    } else if (msg.length < MIN_MESSAGE_CHARS) {
+      setMessageError(
+        `Please enter at least ${MIN_MESSAGE_CHARS} characters.`,
+      );
+      ok = false;
+    } else {
+      setMessageError("");
+    }
+
     return ok;
   }
 
@@ -178,6 +232,21 @@ export default function ContactFormSection() {
     setStatus("submitting");
 
     try {
+      let recaptchaToken: string | undefined;
+      if (RECAPTCHA_SITE_KEY) {
+        recaptchaToken = (await getRecaptchaToken(RECAPTCHA_SITE_KEY)) ?? undefined;
+        if (!recaptchaToken) {
+          setStatus("idle");
+          setToast({
+            variant: "error",
+            title: "Security check failed",
+            description:
+              "Could not verify the form. Disable blockers or wait a moment and try again.",
+          });
+          return;
+        }
+      }
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -187,6 +256,7 @@ export default function ContactFormSection() {
           email: email.trim(),
           phone: phone.trim(),
           message,
+          ...(recaptchaToken ? { recaptchaToken } : {}),
         }),
       });
 
@@ -198,15 +268,21 @@ export default function ContactFormSection() {
 
       if (!res.ok || !data || data.ok !== true) {
         if (res.status === 400 && data?.error) {
+          const errLower = data.error.toLowerCase();
           if (
-            data.error.toLowerCase().includes("email") ||
-            data.error.toLowerCase().includes("phone")
+            errLower.includes("email") ||
+            errLower.includes("phone") ||
+            errLower.includes("message") ||
+            errLower.includes("short")
           ) {
-            if (data.error.toLowerCase().includes("email")) {
+            if (errLower.includes("email")) {
               setEmailError(data.error);
             }
-            if (data.error.toLowerCase().includes("phone")) {
+            if (errLower.includes("phone")) {
               setPhoneError(data.error);
+            }
+            if (errLower.includes("message") || errLower.includes("short")) {
+              setMessageError(data.error);
             }
           }
           setToast({
@@ -238,6 +314,7 @@ export default function ContactFormSection() {
       setMessage("");
       setEmailError("");
       setPhoneError("");
+      setMessageError("");
       setStatus("idle");
       setToast({
         variant: "success",
@@ -258,6 +335,12 @@ export default function ContactFormSection() {
 
   return (
     <section className="w-full bg-white margin-y py-10">
+      {RECAPTCHA_SITE_KEY ? (
+        <Script
+          src={`https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(RECAPTCHA_SITE_KEY)}`}
+          strategy="afterInteractive"
+        />
+      ) : null}
       {toast ? (
         <ContactToast toast={toast} onClose={dismissToast} />
       ) : null}
@@ -432,9 +515,37 @@ export default function ContactFormSection() {
                   rows={12}
                   placeholder="Enter your message"
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className={`resize-none ${inputBase} border-transparent focus:border-[#397466]`}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setMessage(v);
+                    if (
+                      messageError &&
+                      v.trim().length >= MIN_MESSAGE_CHARS
+                    ) {
+                      setMessageError("");
+                    }
+                  }}
+                  onBlur={() => {
+                    const t = message.trim();
+                    if (t && t.length < MIN_MESSAGE_CHARS) {
+                      setMessageError(
+                        `Please enter at least ${MIN_MESSAGE_CHARS} characters.`,
+                      );
+                    } else if (!t) {
+                      setMessageError("");
+                    }
+                  }}
+                  className={`resize-none ${inputBase} ${
+                    messageError
+                      ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+                      : "border-transparent focus:border-[#397466]"
+                  }`}
                 />
+                {messageError ? (
+                  <p className="font-poppins text-xs text-[#B42318]">
+                    {messageError}
+                  </p>
+                ) : null}
               </div>
 
               {/* Submit */}

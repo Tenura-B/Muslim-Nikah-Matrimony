@@ -5,6 +5,7 @@ import {
   looksLikeBrevoSmtpKey,
   normalizeEnv,
 } from "@/lib/brevo-shared";
+import { verifyRecaptchaV3 } from "@/lib/recaptcha";
 
 /** Ensure Node runtime (full `fetch` + env) for outbound Brevo calls. */
 export const runtime = "nodejs";
@@ -15,6 +16,7 @@ type ContactPayload = {
   email: string;
   phone?: string;
   message: string;
+  recaptchaToken?: string;
 };
 
 /** Optional phone: if provided, require plausible length after stripping formatting. */
@@ -137,6 +139,8 @@ export async function POST(req: Request) {
     const email = sanitizeOneLine(body.email ?? "");
     const phone = sanitizeOneLine(body.phone ?? "");
     const message = (body.message ?? "").toString().trim();
+    const recaptchaToken = (body.recaptchaToken ?? "").toString().trim();
+    const recaptchaSecret = normalizeEnv(process.env.RECAPTCHA_SECRET_KEY);
 
     if (!firstName || !lastName || !email || !message) {
       return NextResponse.json(
@@ -165,6 +169,29 @@ export async function POST(req: Request) {
         { ok: false, error: "Message is too short." },
         { status: 400 },
       );
+    }
+
+    if (recaptchaSecret) {
+      if (!recaptchaToken) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "Security check failed to load. Refresh the page and try again.",
+          },
+          { status: 400 },
+        );
+      }
+      const captcha = await verifyRecaptchaV3({
+        secret: recaptchaSecret,
+        token: recaptchaToken,
+      });
+      if (!captcha.ok) {
+        return NextResponse.json(
+          { ok: false, error: captcha.reason },
+          { status: 400 },
+        );
+      }
     }
 
     const subject = `New contact message from ${firstName} ${lastName}`;
