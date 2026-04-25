@@ -280,7 +280,7 @@ function generateBio(form: any): { about: string; expectations: string } {
   const dressCode = form.dressCode || '';
 
   const aboutParts: string[] = [];
-  if (firstName) aboutParts.push(`${firstName} is a sincere and practising Muslim${ethnicity ? ` of ${ethnicity} background` : ''}`);
+  aboutParts.push(`A sincere and practising Muslim${ethnicity ? ` of ${ethnicity} background` : ''}`);
   if (location) aboutParts.push(`currently living in ${location}`);
   if (occupation && profession) aboutParts.push(`working as a ${profession} (${occupation})`);
   else if (occupation) aboutParts.push(`currently ${occupation.toLowerCase()}`);
@@ -316,7 +316,7 @@ export default function CreateProfilePage() {
   useEffect(() => { setMasterData(loadMasterData()); }, []);
   const [form, setForm] = useState<any>({
     // Personal
-    firstName: '', lastName: '', createdBy: '', gender: 'MALE',
+    createdBy: '', gender: 'MALE',
     dob_day: '', dob_month: '', dob_year: '', dateOfBirth: '',
     height: '', weight: '', appearance: '', complexion: '', ethnicity: '',
     dressCode: '', familyStatus: '', civilStatus: '', children: '',
@@ -447,10 +447,8 @@ export default function CreateProfilePage() {
     setSaving(true); setApiError('');
     try {
       const heightCm = form.height ? (HEIGHT_TO_CM[form.height] ?? undefined) : undefined;
-      const fullName = [form.firstName?.trim(), form.lastName?.trim()].filter(Boolean).join(' ');
-      // If no name, fall back to memberId from localStorage user, or a placeholder
       const storedUser = (() => { try { return JSON.parse(localStorage.getItem('mn_user') || '{}'); } catch { return {}; } })();
-      const profileName = fullName || storedUser?.memberId || 'Member';
+      const profileName = storedUser?.memberId || 'Member';
       const payload: Record<string, any> = {
         name:               profileName,
         gender:             form.gender,
@@ -563,14 +561,6 @@ export default function CreateProfilePage() {
             {/* ── Step 0: Personal Details ──────────────────────────────── */}
             {step === 0 && (
               <>
-                <div className={g2}>
-                  <Field label="First Name" name="firstName" value={form.firstName} onChange={handleField} placeholder="Enter your first name" optional />
-                  <Field label="Last Name" name="lastName" value={form.lastName} onChange={handleField} placeholder="Enter your last name" optional />
-                </div>
-                <p className="-mt-2 flex items-center gap-1.5 text-[11px] text-gray-400">
-                  <svg className="w-3.5 h-3.5 shrink-0 text-[#1C3B35]/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  You can hide your real name and use a nickname from&nbsp;<a href="/dashboard/settings" className="text-[#1C3B35] font-medium underline underline-offset-2 hover:opacity-80 transition">User Settings</a>.
-                </p>
                 <div className={g2}>
                   <Select label="Created By" name="createdBy" value={form.createdBy} onChange={handleField} options={CREATED_BY_OPTS} required error={fieldErrors.createdBy} />
                   <Select label="Gender" name="gender" value={form.gender} onChange={handleField}
@@ -737,7 +727,6 @@ export default function CreateProfilePage() {
               <>
                 <div className="rounded-xl border border-gray-100 overflow-hidden">
                   {([
-                    ['First Name', form.firstName], ['Last Name', form.lastName],
                     ['Created By', form.createdBy], ['Gender', form.gender === 'MALE' ? 'Male' : 'Female'],
                     ['Date of Birth', form.dateOfBirth], ['Height', form.height],
                     ['Appearance', form.appearance], ['Complexion', form.complexion],

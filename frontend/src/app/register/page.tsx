@@ -351,14 +351,6 @@ function Step1({
       <h2 className="text-xl font-semibold text-gray-800">Your Personal Details</h2>
       <p className="mt-1 text-sm text-gray-500">Please provide your basic information</p>
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <TextField label="First Name" name="firstName" placeholder="Enter your first name" value={data.firstName || ""} onChange={onChange} optional />
-        <TextField label="Last Name" name="lastName" placeholder="Enter your last name" value={data.lastName || ""} onChange={onChange} optional />
-      </div>
-      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-400">
-        <svg className="w-3.5 h-3.5 shrink-0 text-[#1B6B4A]/50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        You can hide your real name and use a nickname from&nbsp;<span className="text-[#1B6B4A] font-medium">User Settings</span> after registration.
-      </p>
-      <div className="mt-0 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField label="Created By" name="createdBy" options={["Self", "Parent", "Guardian", "Sibling"]} value={data.createdBy || ""} onChange={onChange} error={fieldErrors?.createdBy} />
         <SelectField label="Gender" name="gender" options={["Male", "Female"]} value={data.gender || ""} onChange={onChange} error={fieldErrors?.gender} />
         <div className="flex flex-col gap-1">
