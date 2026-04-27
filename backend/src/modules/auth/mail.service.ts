@@ -22,7 +22,7 @@ export class MailService {
   }
 
   private get fromAddress(): string {
-    return `"Muslim Nikah Matrimony" <${process.env.MAIL_FROM ?? process.env.MAIL_USER}>`;
+    return `"Muslim Nikah" <${process.env.MAIL_FROM ?? process.env.MAIL_USER}>`;
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
@@ -48,7 +48,7 @@ export class MailService {
   <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#1B6B4A,#2d9966);padding:36px 40px 28px;text-align:center;">
-      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">🕌 Muslim Nikah Matrimony</h1>
+      <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">🕌 Muslim Nikah</h1>
       <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">${title}</p>
     </div>
     <!-- Body -->
@@ -57,7 +57,7 @@ export class MailService {
     </div>
     <!-- Footer -->
     <div style="padding:18px 40px;background:#F9FAFB;border-top:1px solid #E5E7EB;text-align:center;">
-      <p style="margin:0;color:#9CA3AF;font-size:12px;">© ${new Date().getFullYear()} Muslim Nikah Matrimony · All rights reserved.</p>
+      <p style="margin:0;color:#9CA3AF;font-size:12px;">© ${new Date().getFullYear()} Muslim Nikah · All rights reserved.</p>
       <p style="margin:4px 0 0;color:#9CA3AF;font-size:11px;">This is an automated message. Please do not reply directly to this email.</p>
     </div>
   </div>
@@ -97,7 +97,7 @@ export class MailService {
     const body = `
       <h2 style="margin:0 0 12px;color:#111827;font-size:20px;">Assalamu Alaikum! 🌙</h2>
       <p style="margin:0 0 16px;color:#6B7280;font-size:15px;line-height:1.6;">
-        Welcome to <strong>Muslim Nikah Matrimony</strong> — your trusted platform for halal matchmaking.
+        Welcome to <strong>Muslim Nikah</strong> — your trusted platform for halal matchmaking.
         Your account has been created successfully for <strong>${email}</strong>.
       </p>
       <h3 style="margin:0 0 10px;color:#1B6B4A;font-size:15px;">🚀 Get started in 3 simple steps:</h3>
@@ -110,7 +110,7 @@ export class MailService {
       <p style="margin:20px 0 0;color:#9CA3AF;font-size:13px;line-height:1.5;">
         If you did not create this account, you can safely ignore this email.
       </p>`;
-    await this.send(to, 'Welcome to Muslim Nikah Matrimony 🌙', this.wrap('Welcome Aboard!', body));
+    await this.send(to, 'Welcome to Muslim Nikah 🌙', this.wrap('Welcome Aboard!', body));
   }
 
   // ─── 2. Password Reset ───────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ export class MailService {
       <p style="margin:20px 0 0;color:#9CA3AF;font-size:13px;">
         If you didn't request this, your password won't change and this link will expire automatically.
       </p>`;
-    await this.send(to, 'Reset Your Password — Muslim Nikah Matrimony', this.wrap('Password Reset Request', body));
+    await this.send(to, 'Reset Your Password — Muslim Nikah', this.wrap('Password Reset Request', body));
   }
 
   // ─── 3a. Subscription Payment Submitted (PENDING) ────────────────────────────

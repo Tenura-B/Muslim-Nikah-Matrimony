@@ -241,7 +241,7 @@ export default function SelectPlanPage() {
 
     // Always load real profiles from API (even if profileId is in URL)
     reloadProfiles(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onProfileCreated = async (profileId: string) => {
@@ -359,11 +359,10 @@ export default function SelectPlanPage() {
                 onClick={() => setCurrency(cur)}
                 disabled={cur === 'USD' && !hasUsdPrices}
                 title={cur === 'USD' && !hasUsdPrices ? 'USD pricing not available for these packages' : undefined}
-                className={`px-5 py-2 text-sm font-semibold transition-all ${
-                  currency === cur
-                    ? 'bg-[#1B6B4A] text-white'
-                    : 'text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed'
-                }`}
+                className={`px-5 py-2 text-sm font-semibold transition-all ${currency === cur
+                  ? 'bg-[#1B6B4A] text-white'
+                  : 'text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed'
+                  }`}
               >
                 {cur === 'LKR' ? '🇱🇰 LKR' : '🇺🇸 USD'}
               </button>
@@ -407,12 +406,11 @@ export default function SelectPlanPage() {
                       <div
                         key={plan.id}
                         onClick={() => !noUsd && setSelected(plan)}
-                        className={`cursor-pointer rounded-xl border-2 p-5 text-center transition-all duration-200 ${
-                          noUsd ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50' :
+                        className={`cursor-pointer rounded-xl border-2 p-5 text-center transition-all duration-200 ${noUsd ? 'opacity-50 cursor-not-allowed border-gray-200 bg-gray-50' :
                           isSelected
                             ? 'border-[#1B6B4A] bg-[#e8f5f0] shadow-lg scale-[1.02]'
                             : 'border-gray-300 bg-white hover:border-[#1B6B4A]/50 hover:shadow'
-                        }`}
+                          }`}
                       >
                         <p className="font-semibold text-gray-800 text-sm mb-2">{plan.name}</p>
                         {noUsd ? (
@@ -443,23 +441,35 @@ export default function SelectPlanPage() {
             )}
 
             {/* Features Banner */}
-            <div className="rounded-xl bg-[#F5C518] px-8 py-5">
-              <h2 className="text-2xl sm:text-3xl font-black text-[#1B3A2D] mb-4">View Unlimited Profiles</h2>
-              <ul className="space-y-2">
-                {[
-                  'Unlimited Profiles',
-                  'Connect With Any User on muslimnikah.lk',
-                  'View Mobile Number',
-                  'View WhatsApp Number',
-                  'Chat with Members',
-                  'Advanced Search & Filters',
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-3 text-[#1B3A2D] font-medium">
-                    <span className="text-[#1B3A2D] font-bold">◆</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
+            <div className="relative overflow-hidden rounded-xl bg-[#F5C518] px-8 py-5">
+              {/* Background Image Overlay */}
+              <div
+                className="absolute inset-0 z-0 pointer-events-none opacity-30"
+                style={{
+                  backgroundImage: 'url(/images/card.svg)',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+              />
+
+              <div className="relative z-10">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#1B3A2D] mb-4">View Unlimited Profiles</h2>
+                <ul className="space-y-2">
+                  {[
+                    'Unlimited Profiles',
+                    'Connect With Any User on muslimnikah.lk',
+                    'View Mobile Number',
+                    'View WhatsApp Number',
+                    'Chat with Members',
+                    'Advanced Search & Filters',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-3 text-[#1B3A2D] font-medium">
+                      <span className="text-[#1B3A2D] font-bold">◆</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
 
@@ -587,7 +597,7 @@ export default function SelectPlanPage() {
                       />
                       <p className="flex items-start gap-1.5 text-[11px] text-white/50 leading-relaxed -mt-1">
                         <svg className="w-3 h-3 shrink-0 mt-0.5 text-[#F5C518]/70" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
                         When making a deposit or bank transfer, please include your registered email address or mobile number so we can identify your payment.
                       </p>

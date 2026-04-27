@@ -51,7 +51,7 @@ export class AuthService {
     const smsPhone = dto.phone || dto.whatsappNumber;
     if (smsPhone) {
       const displayName = user.email.split('@')[0];
-      const welcomeMsg = `Hi ${displayName} welcome to Muslim Nikah Matrimony \u2764\uFE0F`;
+      const welcomeMsg = `Hi ${displayName} welcome to Muslim Nikah \u2764\uFE0F`;
       this.sms.sendSms(smsPhone, welcomeMsg).catch(() => {});
     }
 
